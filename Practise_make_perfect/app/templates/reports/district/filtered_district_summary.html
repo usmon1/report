@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Сводный отчёт по району/области - Фильтрованный отчёт</title>
+    <style>
+        /* Стили для бланка - аналогично step3_summary.html с дополнениями */
+        body {
+            font-family: 'Times New Roman', serif;
+            margin: 0;
+            padding: 20px;
+            background: white;
+            color: black;
+            font-size: 14px;
+            line-height: 1.3;
+        }
+
+        .blank-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* Скрываем все кнопки и навигацию в режиме печати/PDF */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                padding: 0;
+                margin: 0;
+            }
+            .blank-container {
+                max-width: 100%;
+                margin: 0;
+            }
+        }
+
+        /* Стили бланка для сводного отчета */
+        .form-number {
+            text-align: right;
+            font-weight: bold;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .location-info {
+            margin-bottom: 20px;
+        }
+
+        .location-line {
+            margin-bottom: 8px;
+        }
+
+        
+
+        .codes-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border: 1px solid #333;
+        }
+
+        .codes-table td {
+            border: 1px solid #333;
+            text-align: center;
+            padding: 8px;
+            width: 25%;
+        }
+
+        .report-title {
+            text-align: center;
+            margin: 30px 0;
+            font-weight: bold;
+        }
+
+        .main-title {
+            font-size: 20px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .sub-title {
+            font-size: 15px;
+        }
+
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border: 1px solid #333;
+            font-size: 12px;
+        }
+
+        .summary-table th,
+        .summary-table td {
+            border: 1px solid #333;
+            padding: 8px 4px;
+            text-align: center;
+            vertical-align: top;
+        }
+
+        .summary-table th {
+            font-weight: bold;
+            background-color: #f8f9fa;
+        }
+
+        .enterprise-name {
+            text-align: left;
+            width: 25%;
+        }
+
+        .code-col {
+            width: 10%;
+        }
+
+        .plan-col {
+            width: 10%;
+        }
+
+        .fact-col {
+            width: 10%;
+        }
+
+        .dynamics-col {
+            width: 10%;
+        }
+
+        .total-row {
+            font-weight: bold;
+            background-color: #e9ecef;
+        }
+
+        .signature-section {
+            margin-top: 40px;
+        }
+
+        .date-line {
+            margin-bottom: 40px;
+        }
+
+        .representative-section {
+            display: flex;
+            align-items: flex-start;
+            gap: 50px;
+            margin-top: 20px;
+        }
+
+        .signature-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 200px;
+        }
+
+        .signature-line {
+            width: 200px;
+            border-bottom: 1px solid #000;
+            margin-bottom: 5px;
+            position: relative;
+            height: 20px;
+        }
+
+        .signature-label {
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 16px;
+        }
+
+        .error {
+            background: #ffe6e6;
+            border: 1px solid #ff0000;
+            padding: 15px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        /* Стили для кнопок навигации */
+        .nav-buttons {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f5f5f5;
+        }
+
+        .btn {
+            margin: 0 10px;
+            padding: 8px 15px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-info {
+            background: #17a2b8;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .percentage-positive { color: #28a745; }
+        .percentage-negative { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <!-- Кнопки навигации - будут скрыты при печати -->
+    <div class="no-print nav-buttons">
+        <a href="/reports/district?user_login={{ username }}&user_role={{ user_role }}"
+           class="btn btn-secondary">
+            ⬅️ Назад к выбору района
+        </a>
+        <button onclick="exportToPDF()" class="btn btn-success">
+            📄 Экспорт в PDF
+        </button>
+        <button onclick="window.print()" class="btn btn-info">
+            🖨️ Печать
+        </button>
+        <button onclick="exportEnterpriseReports()" class="btn" style="background: #6f42c1;">
+            📊 Отчеты предприятий
+        </button>
+    </div>
+
+    <!-- Основной контейнер бланка -->
+    <div class="blank-container" id="blank-content">
+        <div class="form-number">Форма № П-5</div>
+
+        <div class="location-info">
+            <div class="location-line">
+                Наименование района: <strong><span id="location-name"></span></strong>
+            </div>
+            <div class="location-line">
+                Регистрационный номер района: <strong><span id="location-code-display"></span></strong>
+            </div>
+        </div>
+
+        
+
+        <table class="codes-table">
+            <tr>
+                <td>Код мин-ва</td>
+                <td>Код отрасли</td>
+                <td>Код области</td>
+                <td>Код района</td>
+            </tr>
+            <tr>
+                <td id="ministry-code">_____</td>
+                <td>000</td>
+                <td id="region-code-display"></td>
+                <td id="location-code-value"></td>
+            </tr>
+        </table>
+
+        <div class="report-title">
+            <div class="main-title">СВОДНЫЙ ОТЧЁТ</div>
+            <div class="sub-title" id="report-subtitle">
+                <!-- Будет заполнено JavaScript -->
+            </div>
+        </div>
+
+        <table class="summary-table" id="summary-table">
+            <thead>
+                <tr>
+                    <th class="enterprise-name">Наименование предприятия</th>
+                    <th class="code-col">Код предприятия</th>
+                    <th class="plan-col">План (всего)</th>
+                    <th class="plan-col">План (в т.ч. в сельской местности)</th>
+                    <th class="fact-col">Фактически выполнено (всего)</th>
+                    <th class="fact-col">Фактически выполнено (в т.ч. в сельской местности)</th>
+                    <th class="dynamics-col dynamics-column">От прошлого года(%)(всего)</th>
+                    <th class="dynamics-col dynamics-column">От прошлого года(%)(в т.ч. в сельской местности)</th>
+                </tr>
+            </thead>
+            <tbody id="summary-body">
+                <!-- Данные будут загружены через JavaScript -->
+            </tbody>
+            <tfoot id="summary-footer">
+                <!-- Итоговая строка будет добавлена через JavaScript -->
+            </tfoot>
+        </table>
+
+        <div class="signature-section">
+            <div class="date-line">
+                Дата составления: <strong><span id="current-date"></span></strong>
+            </div>
+
+            <div class="representative-section">
+                <span>Представитель <span id="representative-title">района</span>:</span>
+                <div class="signature-block">
+                    <div class="signature-line"></div>
+                    <div class="signature-label">(подпись)</div>
+                </div>
+                <div class="signature-block">
+                    <div class="signature-line"></div>
+                    <div class="signature-label">(ФИО)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подключаем библиотеки для PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <script>
+        // Получаем параметры из URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const locationId = urlParams.get('location_id');
+        const locationType = urlParams.get('location_type');
+        const startYear = urlParams.get('start_year');
+        const endYear = urlParams.get('end_year');
+
+        // Функция для форматирования даты
+        function formatCurrentDate() {
+            const now = new Date();
+            const day = now.getDate().toString().padStart(2, '0');
+            const month = (now.getMonth() + 1).toString().padStart(2, '0');
+            const year = now.getFullYear();
+            return `"${day}" ${getMonthName(now.getMonth())} ${year} г.`;
+        }
+
+        // Функция для получения названия месяца
+        function getMonthName(monthIndex) {
+            const months = [
+                'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+                'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+            ];
+            return months[monthIndex];
+        }
+
+        // Форматирование чисел
+        function formatNumber(num) {
+            if (num === 0 || num === null || num === undefined) return '—';
+            return new Intl.NumberFormat('ru-RU').format(Math.round(num));
+        }
+
+        // Форматирование процентов
+        function formatPercentage(num) {
+            if (num === 0 || num === null || num === undefined) return '—';
+            return num.toFixed(2) + '%';
+        }
+
+        // Получение класса для процентов
+        function getPercentageClass(value) {
+            if (value === null || value === undefined) return '';
+            return value >= 100 ? 'percentage-positive' : 'percentage-negative';
+        }
+
+        // Загрузка данных фильтрованного сводного отчета
+        async function loadFilteredSummaryData() {
+            try {
+                const response = await fetch(
+                    `/api/district/filtered-summary?location_id=${locationId}&location_type=${locationType}&start_year=${startYear}&end_year=${endYear}`
+                );
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    renderFilteredSummaryReport(data.summary_data);
+                } else {
+                    showError('Ошибка загрузки данных: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки фильтрованного сводного отчета:', error);
+                showError('Ошибка загрузки данных отчета: ' + error.message);
+            }
+        }
+
+        // Показать ошибку
+        function showError(message) {
+            const container = document.getElementById('summary-body');
+            container.innerHTML = `<tr><td colspan="8" class="error">${message}</td></tr>`;
+        }
+
+        // Заполнение бланка данными фильтрованного отчета
+        function renderFilteredSummaryReport(summaryData) {
+            // Определяем тип локации и соответствующие тексты
+            const isRegion = summaryData.location_type === 'region';
+            
+            const locationCode = isRegion ? summaryData.region_code : summaryData.district_code;
+            
+
+            // Заполняем основную информацию
+            
+            document.getElementById('location-name').textContent = summaryData.location_name || 'Не указано';
+            document.getElementById('location-code-display').textContent = locationCode || 'Не указан';
+            
+            document.getElementById('location-code-value').textContent = locationCode || '';
+            document.getElementById('region-code-display').textContent = summaryData.region_code || '';
+            
+
+            // Заполняем информацию о периоде
+            
+            const reportSubtitle = document.getElementById('report-subtitle');
+            
+            if (summaryData.is_single_year) {
+                
+                reportSubtitle.textContent = `по выполнению услуг предприятиями района за ${summaryData.start_year} год`;
+            } else {
+                
+                reportSubtitle.textContent = `по выполнению услуг предприятиями района за период с ${summaryData.start_year} по ${summaryData.end_year} год`;
+            }
+
+            // Обрабатываем колонки динамики
+            const dynamicsColumns = document.querySelectorAll('.dynamics-column');
+            if (summaryData.is_single_year) {
+                // Показываем колонки динамики
+                dynamicsColumns.forEach(col => col.style.display = 'table-cell');
+            } else {
+                // Скрываем колонки динамики
+                dynamicsColumns.forEach(col => col.style.display = 'none');
+            }
+
+            // Заполняем текущую дату
+            document.getElementById('current-date').textContent = formatCurrentDate();
+
+            // Заполняем таблицу предприятий
+            const summaryBody = document.getElementById('summary-body');
+            summaryBody.innerHTML = '';
+
+            summaryData.enterprises.forEach(enterprise => {
+                const tr = document.createElement('tr');
+                
+                const dynamicsTotalClass = getPercentageClass(enterprise.dynamics_total);
+                const dynamicsRuralClass = getPercentageClass(enterprise.dynamics_rural);
+
+                let rowHTML = `
+                    <td class="enterprise-name">${enterprise.name}</td>
+                    <td>${enterprise.reg_number}</td>
+                    <td>${formatNumber(enterprise.total_plan)}</td>
+                    <td>${formatNumber(enterprise.rural_plan)}</td>
+                    <td>${formatNumber(enterprise.total_fact)}</td>
+                    <td>${formatNumber(enterprise.rural_fact)}</td>
+                `;
+
+                // Добавляем колонки динамики только если это один год
+                if (summaryData.is_single_year) {
+                    rowHTML += `
+                        <td class="${dynamicsTotalClass}">${formatPercentage(enterprise.dynamics_total)}</td>
+                        <td class="${dynamicsRuralClass}">${formatPercentage(enterprise.dynamics_rural)}</td>
+                    `;
+                } else {
+                    rowHTML += `
+                        <td style="display: none;"></td>
+                        <td style="display: none;"></td>
+                    `;
+                }
+
+                tr.innerHTML = rowHTML;
+                summaryBody.appendChild(tr);
+            });
+
+            // Добавляем итоговую строку
+            const summaryFooter = document.getElementById('summary-footer');
+            const totals = summaryData.totals;
+            
+            const dynamicsTotalClass = getPercentageClass(totals.dynamics_total);
+            const dynamicsRuralClass = getPercentageClass(totals.dynamics_rural);
+
+            let footerHTML = `
+                <tr class="total-row">
+                    <td class="enterprise-name"><strong>Итого по району</strong></td>
+                    <td></td>
+                    <td><strong>${formatNumber(totals.total_plan)}</strong></td>
+                    <td><strong>${formatNumber(totals.rural_plan)}</strong></td>
+                    <td><strong>${formatNumber(totals.total_fact)}</strong></td>
+                    <td><strong>${formatNumber(totals.rural_fact)}</strong></td>
+            `;
+
+            // Добавляем колонки динамики только если это один год
+            if (summaryData.is_single_year) {
+                footerHTML += `
+                    <td class="${dynamicsTotalClass}"><strong>${formatPercentage(totals.dynamics_total)}</strong></td>
+                    <td class="${dynamicsRuralClass}"><strong>${formatPercentage(totals.dynamics_rural)}</strong></td>
+                `;
+            } else {
+                footerHTML += `
+                    <td style="display: none;"></td>
+                    <td style="display: none;"></td>
+                `;
+            }
+
+            footerHTML += '</tr>';
+            summaryFooter.innerHTML = footerHTML;
+        }
+
+        // Экспорт в PDF
+        function exportToPDF() {
+            const element = document.getElementById('blank-content');
+            
+            // Формируем имя файла
+            const locationType = urlParams.get('location_type');
+            const locationIdClean = locationId.split('_')[1];
+            const filename = locationType === 'region' 
+                ? `сводный_отчет_область_${locationIdClean}_${startYear}-${endYear}.pdf`
+                : `сводный_отчет_район_${locationIdClean}_${startYear}-${endYear}.pdf`;
+
+            const options = {
+                margin: 10,
+                filename: filename,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false
+                },
+                jsPDF: {
+                    unit: 'mm',
+                    format: 'a4',
+                    orientation: 'portrait'
+                }
+            };
+
+            html2pdf().set(options).from(element).save();
+        }
+
+        // Функция для экспорта отчетов всех предприятий (аналогично step3_summary.html)
+        // Функция для экспорта отчетов всех предприятий
+        function exportEnterpriseReports() {
+    const params = new URLSearchParams({
+        location_id: locationId,
+        location_type: locationType,
+        start_year: startYear,
+        end_year: endYear,
+        user_login: '{{ username }}',
+        user_role: '{{ user_role }}'
+    });
+    
+    window.open(`/reports/district/filtered-summary/combined-reports-server?${params.toString()}`, '_blank');
+}
+
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFilteredSummaryData();
+        });
+
+        // Проверка авторизации
+        const isLoggedIn = localStorage.getItem('is_logged_in');
+        if (isLoggedIn !== 'true') {
+            window.location.href = '/login';
+        }
+    </script>
+</body>
+</html>

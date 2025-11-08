@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Панель администратора{% endblock %}</title>
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --dark-color: #343a40;
+            --light-color: #f8f9fa;
+            --sidebar-width: 250px;
+            --header-height: 60px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        /* Верхняя панель */
+        .admin-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--header-height);
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1000;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 10px;
+            background: #f8f9fa;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success-color);
+        }
+
+        .status-dot.disconnected {
+            background: var(--danger-color);
+        }
+
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        /* Боковая панель */
+        .admin-sidebar {
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            bottom: 0;
+            width: var(--sidebar-width);
+            background: var(--dark-color);
+            color: white;
+            transition: transform 0.3s ease;
+            z-index: 999;
+            transform: translateX(-100%);
+        }
+
+        .admin-sidebar.open {
+            transform: translateX(0);
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 20px 0;
+        }
+
+        .nav-item {
+            margin-bottom: 5px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: rgba(255,255,255,0.1);
+            border-left-color: var(--primary-color);
+        }
+
+        /* Основной контент */
+        .admin-main {
+            margin-top: var(--header-height);
+            margin-left: 0;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .admin-main.sidebar-open {
+            margin-left: var(--sidebar-width);
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+
+        /* Загрузка */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #ffe6e6;
+            border: 1px solid var(--danger-color);
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Верхняя панель -->
+    <header class="admin-header">
+        <div class="header-left">
+            <button class="btn menu-toggle" onclick="toggleSidebar()">🧭 Меню</button>
+            <div class="logo">ERP</div>
+            <div class="header-title">Панель администратора — Управление данными системы</div>
+        </div>
+        
+        <div class="header-right">
+            <div class="status-indicator">
+                <span class="status-dot" id="mainDbDot"></span>
+                <span id="mainDbText">Основная БД: проверка...</span>
+            </div>
+            <div class="status-indicator">
+                <span class="status-dot" id="usersDbDot"></span>
+                <span id="usersDbText">БД пользователей: проверка...</span>
+            </div>
+            <button class="btn btn-primary" onclick="refreshData()">🔄 Обновить</button>
+            <a href="/logout" class="btn btn-danger">🚪 Выход</a>
+        </div>
+    </header>
+
+    <!-- Боковая панель -->
+    <nav class="admin-sidebar" id="sidebar">
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="/admin/dashboard?user_login={{ username }}&user_role={{ user_role }}" class="nav-link {% if request.url.path == '/admin/dashboard' %}active{% endif %}">
+                    📊 Дашборд
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/admin/enterprises?user_login={{ username }}&user_role={{ user_role }}" class="nav-link {% if request.url.path == '/admin/enterprises' %}active{% endif %}">
+                    🏢 Предприятия
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/admin/services?user_login={{ username }}&user_role={{ user_role }}" class="nav-link {% if request.url.path == '/admin/services' %}active{% endif %}">
+                    ⚙️ Услуги
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/admin/periods?user_login={{ username }}&user_role={{ user_role }}" class="nav-link {% if request.url.path == '/admin/periods' %}active{% endif %}">
+                    📅 Отчётные периоды
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/admin/users?user_login={{ username }}&user_role={{ user_role }}" class="nav-link {% if request.url.path == '/admin/users' %}active{% endif %}">
+                    👤 Пользователи
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Основной контент -->
+    <main class="admin-main" id="main-content">
+        {% block content %}
+        <!-- Контент страницы будет здесь -->
+        {% endblock %}
+    </main>
+
+    <script>
+        // Переменные для состояния - по умолчанию панель скрыта
+        let sidebarOpen = false;
+
+        // Переключение боковой панели
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const main = document.getElementById('main-content');
+            
+            sidebarOpen = !sidebarOpen;
+            
+            if (sidebarOpen) {
+                sidebar.classList.add('open');
+                main.classList.add('sidebar-open');
+            } else {
+                sidebar.classList.remove('open');
+                main.classList.remove('sidebar-open');
+            }
+        }
+
+        // Обновление данных
+        function refreshData() {
+            const event = new CustomEvent('refreshData');
+            document.dispatchEvent(event);
+        }
+
+        // Проверка статуса БД
+        async function checkDatabaseStatus() {
+            try {
+                const response = await fetch('/api/admin/db-status');
+                const data = await response.json();
+                
+                const mainDbDot = document.getElementById('mainDbDot');
+                const mainDbText = document.getElementById('mainDbText');
+                const usersDbDot = document.getElementById('usersDbDot');
+                const usersDbText = document.getElementById('usersDbText');
+                
+                if (data.success) {
+                    // Основная БД
+                    if (data.main_db) {
+                        mainDbDot.className = 'status-dot';
+                        mainDbText.textContent = '● Основная БД: подключено';
+                    } else {
+                        mainDbDot.className = 'status-dot disconnected';
+                        mainDbText.textContent = '● Основная БД: ошибка подключения';
+                    }
+                    
+                    // БД пользователей
+                    if (data.users_db) {
+                        usersDbDot.className = 'status-dot';
+                        usersDbText.textContent = '● БД пользователей: подключено';
+                    } else {
+                        usersDbDot.className = 'status-dot disconnected';
+                        usersDbText.textContent = '● БД пользователей: ошибка подключения';
+                    }
+                } else {
+                    // Если запрос не успешен, показываем ошибку для обоих
+                    mainDbDot.className = 'status-dot disconnected';
+                    mainDbText.textContent = '● Основная БД: ошибка подключения';
+                    usersDbDot.className = 'status-dot disconnected';
+                    usersDbText.textContent = '● БД пользователей: ошибка подключения';
+                }
+            } catch (error) {
+                console.error('Ошибка проверки статуса БД:', error);
+                document.getElementById('mainDbDot').className = 'status-dot disconnected';
+                document.getElementById('mainDbText').textContent = '● Основная БД: ошибка подключения';
+                document.getElementById('usersDbDot').className = 'status-dot disconnected';
+                document.getElementById('usersDbText').textContent = '● БД пользователей: ошибка подключения';
+            }
+        }
+
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', function() {
+            checkDatabaseStatus();
+            
+            // Проверяем статус каждые 30 секунд
+            setInterval(checkDatabaseStatus, 30000);
+            
+            // Проверка авторизации
+            const isLoggedIn = localStorage.getItem('is_logged_in');
+            const userRole = localStorage.getItem('user_role');
+            
+            if (isLoggedIn !== 'true' || userRole !== 'admin') {
+                window.location.href = '/admin_login';
+            }
+        });
+
+        // Обработчик обновления данных
+        document.addEventListener('refreshData', function() {
+            checkDatabaseStatus();
+            // Вызываем функцию обновления конкретной страницы, если она определена
+            if (typeof window.refreshPageData === 'function') {
+                window.refreshPageData();
+            }
+        });
+    </script>
+
+    {% block scripts %}
+    <!-- Дополнительные скрипты страницы -->
+    {% endblock %}
+</body>
+</html>

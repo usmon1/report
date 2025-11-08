@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% if is_admin %}Вход для администратора{% else %}Вход в систему{% endif %}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            width: 300px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 1.5rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+        }
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .btn {
+            width: 100%;
+            padding: 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+        .btn:hover {
+            background: #45a049;
+        }
+        .back-btn {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #666;
+            text-decoration: none;
+        }
+        .error {
+            color: red;
+            text-align: center;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        /* Стили для кнопки показа пароля */
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .password-wrapper input {
+            padding-right: 40px;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 5px;
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+        .toggle-password:hover {
+            background: #f0f0f0;
+        }
+        .attempts-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 0.75rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .attempts-warning.low {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+
+        .attempts-warning.critical {
+            background: #f5c6cb;
+            border-color: #e74c3c;
+            color: #721c24;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-btn">⬅️ На главную</a>
+        <h1>{% if is_admin %}🛠️ Вход для администратора{% else %}🔐 Вход в систему{% endif %}</h1>
+
+        <form id="loginForm">
+           <div class="form-group">
+               <label>Логин:</label>
+               <input type="text" name="username" required>
+           </div>
+
+           <div class="form-group">
+               <label>Пароль:</label>
+               <div class="password-wrapper">
+                   <input type="password" name="password" required id="passwordInput">
+                   <button type="button" class="toggle-password">👁️</button>
+               </div>
+           </div>
+
+           <!-- Блок для отображения оставшихся попыток -->
+           <div id="attemptsWarning" class="attempts-warning" style="display: none;">
+               Осталось попыток: <span id="attemptsCount">5</span>
+           </div>
+
+           <button type="submit" class="btn">✅ Войти</button>
+        </form>
+
+        <div id="errorMessage" class="error"></div>
+    </div>
+
+    <script>
+        // Функция для переключения видимости пароля
+        function setupPasswordToggle() {
+            const toggleButton = document.querySelector('.toggle-password');
+            const passwordInput = document.getElementById('passwordInput');
+
+            if (toggleButton && passwordInput) {
+                toggleButton.addEventListener('click', function() {
+                    if (passwordInput.type === 'password') {
+                        passwordInput.type = 'text';
+                        this.textContent = '🔒';
+                    } else {
+                        passwordInput.type = 'password';
+                        this.textContent = '👁️';
+                    }
+                });
+            }
+        }
+
+      document.getElementById('loginForm').addEventListener('submit', async function(e) {
+          e.preventDefault();
+
+          const formData = new FormData(this);
+          const username = formData.get('username');
+          const password = formData.get('password');
+
+          // Скрываем предыдущие сообщения
+          document.getElementById('errorMessage').style.display = 'none';
+          document.getElementById('attemptsWarning').style.display = 'none';
+
+          // Определяем URL для запроса в зависимости от типа входа
+          const url = "{% if is_admin %}/api/admin_login{% else %}/api/login{% endif %}";
+
+          try {
+              const response = await fetch(url, {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/x-www-form-urlencoded',
+                  },
+                  body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+              });
+
+              const result = await response.json();
+
+              if (result.success) {
+                  // Сохраняем данные в localStorage
+                  localStorage.setItem('user_login', result.user_login);
+                  localStorage.setItem('user_role', result.user_role);
+                  localStorage.setItem('login_type', result.login_type);
+                  localStorage.setItem('is_logged_in', 'true');
+
+                  // Перенаправляем на dashboard
+                  window.location.href = result.redirect_url;
+              } else {
+                  // Показываем ошибку
+                  document.getElementById('errorMessage').textContent = result.error;
+                  document.getElementById('errorMessage').style.display = 'block';
+
+                  // Показываем оставшиеся попытки если есть
+                  if (result.remaining_attempts !== undefined) {
+                      const attemptsWarning = document.getElementById('attemptsWarning');
+                      const attemptsCount = document.getElementById('attemptsCount');
+
+                      attemptsCount.textContent = result.remaining_attempts;
+                      attemptsWarning.style.display = 'block';
+
+                      // Меняем цвет в зависимости от количества попыток
+                      if (result.remaining_attempts <= 2) {
+                          attemptsWarning.className = 'attempts-warning critical';
+                      } else if (result.remaining_attempts <= 3) {
+                          attemptsWarning.className = 'attempts-warning low';
+                      } else {
+                          attemptsWarning.className = 'attempts-warning';
+                      }
+                  }
+              }
+          } catch (error) {
+              document.getElementById('errorMessage').textContent = 'Ошибка соединения с сервером';
+              document.getElementById('errorMessage').style.display = 'block';
+              console.error('Ошибка:', error);
+          }
+      });
+
+        // Настраиваем переключатель пароля при загрузке
+        setupPasswordToggle();
+    </script>
+</body>
+</html>

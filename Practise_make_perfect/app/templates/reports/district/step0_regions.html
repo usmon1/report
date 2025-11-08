@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Сводный отчёт по району - Выбор области</title>
+    <style>
+        /* ... существующие стили ... */
+         body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: #333;
+        }
+
+        .breadcrumb {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            color: white;
+            font-size: 0.9em;
+            transition: background 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-primary { background: #007bff; }
+        .btn-secondary { background: #6c757d; }
+        .btn-danger { background: #dc3545; }
+        .btn-success { background: #28a745; }
+        .btn-info { background: #17a2b8; }
+        .btn:hover { opacity: 0.9; }
+
+        .regions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .region-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid #007bff;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .region-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        .region-card.selected {
+            border-left-color: #28a745;
+            background: #f8fff9;
+        }
+
+        .region-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .region-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+        }
+
+        .enterprises-count {
+            background: #007bff;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.9em;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .stat-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .stat-section h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+
+        .stat-label {
+            color: #666;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .percentage-positive { color: #28a745; }
+        .percentage-negative { color: #dc3545; }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .details-btn {
+            width: 100%;
+            padding: 10px;
+            background: #17a2b8;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .details-btn:hover {
+            background: #138496;
+        }
+
+        .continue-btn {
+            width: 100%;
+            padding: 12px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 20px;
+            transition: background 0.3s;
+        }
+
+        .continue-btn:hover {
+            background: #218838;
+        }
+
+        .continue-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        /* Модальное окно для детализации */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 2% auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 1000px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .services-table, .enterprises-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .services-table th,
+        .services-table td,
+        .enterprises-table th,
+        .enterprises-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .services-table th,
+        .enterprises-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+
+        .services-table tr:nth-child(even),
+        .enterprises-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .tab-buttons {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-button.active {
+            border-bottom-color: #007bff;
+            color: #007bff;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .enterprise-clickable {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .enterprise-clickable:hover {
+            background-color: #e9ecef !important;
+        }
+        /* Дополнительные стили для модального окна услуг предприятия */
+        .enterprise-services-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .enterprise-services-table th,
+        .enterprise-services-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .enterprise-services-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+
+        .enterprise-services-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .back-button {
+            padding: 8px 15px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+
+        .back-button:hover {
+            background: #545b62;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ... существующая разметка ... -->
+         <div class="header">
+            <h1>🗺️ Сводный отчёт по району - Выбор области</h1>
+            <div class="nav-buttons">
+                <a href="/reports?user_login={{ username }}&user_role={{ user_role }}" class="btn btn-secondary">
+                    📊 Назад к отчётам
+                </a>
+                <a href="/dashboard?user_login={{ username }}&user_role={{ user_role }}" class="btn btn-primary">
+                    🏠 На главную
+                </a>
+                <a href="/logout" class="btn btn-danger">🚪 Выйти</a>
+            </div>
+        </div>
+
+        <!-- Хлебные крошки -->
+        <div class="breadcrumb">
+            <strong>Шаг 0 из 3:</strong> Выберите область для анализа сводного отчета по районам
+        </div>
+
+        <!-- ДОБАВИТЬ В step0_regions.html ПЕРЕД РАЗДЕЛОМ "Список областей" -->
+
+<!-- Секция быстрого фильтра -->
+<div class="filter-section" style="background: #f8f9fa; padding: 25px; border-radius: 10px; margin-bottom: 30px; border: 2px solid #e9ecef;">
+    <h3 style="margin-top: 0; color: #333; display: flex; align-items: center; gap: 10px;">
+        🔍 Быстрый сводный отчет по фильтру
+    </h3>
+
+    <div class="filter-form" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 15px; align-items: end;">
+        <!-- Район/Область -->
+        <div class="form-group">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #555;">Район/Область *</label>
+            <select id="filterLocation" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; background: white;">
+                <option value="">Выберите район или область</option>
+            </select>
+        </div>
+
+        <!-- Период -->
+        <div class="form-group">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #555;">Отчетный период *</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="number" id="startYear" placeholder="Год с" min="2000" max="2030"
+                       style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                <input type="number" id="endYear" placeholder="Год по" min="2000" max="2030"
+                       style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+        </div>
+
+        <!-- Кнопка -->
+        <div class="form-group">
+            <button onclick="generateFilteredSummary()"
+                    style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; white-space: nowrap;">
+                📊 Сформировать сводный отчет
+            </button>
+        </div>
+    </div>
+
+    <div id="filterError" class="error" style="display: none; margin-top: 15px;"></div>
+</div>
+
+        <!-- Список областей -->
+        <div id="regionsContainer">
+            <div class="loading">Загрузка списка областей...</div>
+        </div>
+
+        <!-- Общая кнопка продолжения -->
+        <button class="continue-btn" id="continueBtn" disabled>
+            ✅ Продолжить с выбранной областью
+        </button>
+    </div>
+
+    <!-- Модальное окно детализации области -->
+    <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modal-title">Детальная информация по области</h2>
+
+            <div class="tab-buttons">
+                <button class="tab-button active" data-tab="enterprises">📊 Предприятия области</button>
+                <button class="tab-button" data-tab="services">📋 Услуги области</button>
+            </div>
+
+            <div id="enterprises-tab" class="tab-content active">
+                <div id="enterprises-content">
+                    <div class="loading">Загрузка данных о предприятиях...</div>
+                </div>
+            </div>
+
+            <div id="services-tab" class="tab-content">
+                <div id="services-content">
+                    <div class="loading">Загрузка данных об услугах...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Новое модальное окно для услуг предприятия -->
+    <div id="enterpriseServicesModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <button class="back-button" onclick="backToEnterprises()">⬅️ Назад к предприятиям</button>
+            <h2 id="enterprise-services-title">Детальная информация по услугам предприятия</h2>
+
+            <div id="enterprise-services-content">
+                <div class="loading">Загрузка данных об услугах предприятия...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedRegion = null;
+        let currentRegionCode = null;
+        let currentRegionName = null;
+
+        // Форматирование чисел
+        function formatNumber(num) {
+            if (num === 0 || num === null || num === undefined) return '—';
+            return new Intl.NumberFormat('ru-RU').format(num);
+        }
+
+        // Загрузка списка областей
+        async function loadRegions() {
+            try {
+                const response = await fetch('/api/district/regions');
+                const data = await response.json();
+
+                const container = document.getElementById('regionsContainer');
+
+                if (data.success && data.regions.length > 0) {
+                    let html = '<div class="regions-grid">';
+
+                    data.regions.forEach(region => {
+                        const totalPercentageClass = region.total_percentage >= 100 ? 'percentage-positive' : 'percentage-negative';
+                        const ruralPercentageClass = region.rural_plan > 0 ?
+                            (region.rural_percentage >= 100 ? 'percentage-positive' : 'percentage-negative') : '';
+
+                        const ruralPlanDisplay = region.rural_plan > 0 ? formatNumber(region.rural_plan) : '—';
+                        const ruralFactDisplay = region.rural_fact > 0 ? formatNumber(region.rural_fact) : '—';
+                        const ruralPercentageDisplay = region.rural_plan > 0 ? region.rural_percentage.toFixed(2) + '%' : '—';
+
+                        html += `
+                            <div class="region-card" onclick="selectRegion(${region.region_code})" id="region-${region.region_code}">
+                                <div class="region-header">
+                                    <h3 class="region-name">${region.region_name}</h3>
+                                    <div class="enterprises-count">${region.enterprises_count} предприятий</div>
+                                </div>
+
+                                <div class="stats-grid">
+                                    <div class="stat-section">
+                                        <h4>📊 Всего по области</h4>
+                                        <div class="stat-item">
+                                            <span class="stat-label">План:</span>
+                                            <span class="stat-value">${formatNumber(region.total_plan)}</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Факт:</span>
+                                            <span class="stat-value">${formatNumber(region.total_fact)}</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Выполнение:</span>
+                                            <span class="stat-value ${totalPercentageClass}">${region.total_percentage.toFixed(2)}%</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="stat-section">
+                                        <h4>🌾 Сельская местность</h4>
+                                        <div class="stat-item">
+                                            <span class="stat-label">План:</span>
+                                            <span class="stat-value">${ruralPlanDisplay}</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Факт:</span>
+                                            <span class="stat-value">${ruralFactDisplay}</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Выполнение:</span>
+                                            <span class="stat-value ${ruralPercentageClass}">${ruralPercentageDisplay}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="action-buttons">
+                                    <button class="details-btn" onclick="event.stopPropagation(); showRegionDetails(${region.region_code}, '${region.region_name}')">
+                                        📋 Детальная информация
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    html += '</div>';
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = '<div class="error">Нет данных по областям или ошибка загрузки</div>';
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки областей:', error);
+                document.getElementById('regionsContainer').innerHTML = '<div class="error">Ошибка загрузки данных: ' + error.message + '</div>';
+            }
+        }
+
+        // Выбор области
+        function selectRegion(regionCode) {
+            // Снимаем выделение со всех карточек
+            document.querySelectorAll('.region-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            // Выделяем выбранную карточку
+            const selectedCard = document.getElementById(`region-${regionCode}`);
+            if (selectedCard) {
+                selectedCard.classList.add('selected');
+                selectedRegion = regionCode;
+                document.getElementById('continueBtn').disabled = false;
+            }
+        }
+
+        // Показать детальную информацию по области
+        async function showRegionDetails(regionCode, regionName) {
+            currentRegionCode = regionCode;
+            currentRegionName = regionName;
+
+            const modal = document.getElementById('detailsModal');
+            const modalTitle = document.getElementById('modal-title');
+            const enterprisesContent = document.getElementById('enterprises-content');
+            const servicesContent = document.getElementById('services-content');
+
+            modalTitle.textContent = `Детальная информация: ${regionName}`;
+            enterprisesContent.innerHTML = '<div class="loading">Загрузка данных о предприятиях...</div>';
+            servicesContent.innerHTML = '<div class="loading">Загрузка данных об услугах...</div>';
+
+            modal.style.display = 'block';
+
+            // Загружаем данные о предприятиях
+            try {
+                const response = await fetch(`/api/district/regions/${regionCode}/enterprises`);
+                const data = await response.json();
+
+                if (data.success) {
+                    renderEnterprisesTable(data.enterprises, enterprisesContent, regionCode);
+                } else {
+                    enterprisesContent.innerHTML = '<div class="error">Ошибка загрузки данных о предприятиях: ' + data.error + '</div>';
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки предприятий:', error);
+                enterprisesContent.innerHTML = '<div class="error">Ошибка загрузки данных о предприятиях: ' + error.message + '</div>';
+            }
+
+            // Загружаем данные об услугах
+            try {
+                const response = await fetch(`/api/district/regions/${regionCode}/services`);
+                const data = await response.json();
+
+                if (data.success) {
+                    renderServicesTable(data.services, servicesContent);
+                } else {
+                    servicesContent.innerHTML = '<div class="error">Ошибка загрузки данных об услугах: ' + data.error + '</div>';
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки услуг:', error);
+                servicesContent.innerHTML = '<div class="error">Ошибка загрузки данных об услугах: ' + error.message + '</div>';
+            }
+        }
+
+        // Отрисовка таблицы предприятий
+        function renderEnterprisesTable(enterprises, container, regionCode) {
+            if (!enterprises || enterprises.length === 0) {
+                container.innerHTML = '<div class="error">Нет данных о предприятиях в этой области</div>';
+                return;
+            }
+
+            let tableHTML = `
+                <table class="enterprises-table">
+                    <thead>
+                        <tr>
+                            <th>Наименование предприятия</th>
+                            <th>Код предприятия</th>
+                            <th>План (всего)</th>
+                            <th>План (в т.ч. в сельской местности)</th>
+                            <th>Фактически выполнено (всего)</th>
+                            <th>Фактически выполнено (в т.ч. в сельской местности)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            enterprises.forEach(enterprise => {
+                const ruralPlanDisplay = enterprise.rural_plan > 0 ? formatNumber(enterprise.rural_plan) : '—';
+                const ruralFactDisplay = enterprise.rural_fact > 0 ? formatNumber(enterprise.rural_fact) : '—';
+
+                tableHTML += `
+                    <tr class="enterprise-clickable" onclick="showEnterpriseServices(${enterprise.reg_number}, ${regionCode}, '${enterprise.name.replace(/'/g, "\\'")}')">
+                        <td style="text-align: left;">${enterprise.name}</td>
+                        <td>${enterprise.reg_number}</td>
+                        <td>${formatNumber(enterprise.total_plan)}</td>
+                        <td>${ruralPlanDisplay}</td>
+                        <td>${formatNumber(enterprise.total_fact)}</td>
+                        <td>${ruralFactDisplay}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            container.innerHTML = tableHTML;
+        }
+
+        // Отрисовка таблицы услуг
+        function renderServicesTable(services, container) {
+            if (!services || services.length === 0) {
+                container.innerHTML = '<div class="error">Нет данных об услугах в этой области</div>';
+                return;
+            }
+
+            let tableHTML = `
+                <table class="services-table">
+                    <thead>
+                        <tr>
+                            <th>Наименование вида услуг</th>
+                            <th>План всего</th>
+                            <th>Фактическое выполнение</th>
+                            <th>Процент выполнения</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            services.forEach(service => {
+                const percentageClass = service.percentage >= 100 ? 'percentage-positive' : 'percentage-negative';
+
+                tableHTML += `
+                    <tr>
+                        <td style="text-align: left;">${service.service_name}</td>
+                        <td>${formatNumber(service.plan_total)}</td>
+                        <td>${formatNumber(service.fact_total)}</td>
+                        <td class="${percentageClass}">${service.percentage.toFixed(2)}%</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            container.innerHTML = tableHTML;
+        }
+
+        // Показать услуги предприятия
+        async function showEnterpriseServices(enterpriseId, regionCode, enterpriseName) {
+            const modal = document.getElementById('enterpriseServicesModal');
+            const title = document.getElementById('enterprise-services-title');
+            const content = document.getElementById('enterprise-services-content');
+
+            title.textContent = `Область: ${currentRegionName}`;
+            content.innerHTML = '<div class="loading">Загрузка данных об услугах предприятия...</div>';
+
+            modal.style.display = 'block';
+
+            try {
+                const response = await fetch(`/api/district/regions/${regionCode}/enterprises/${enterpriseId}/services`);
+                const data = await response.json();
+
+                if (data.success) {
+                    renderEnterpriseServicesTable(data.services, content, enterpriseName);
+                } else {
+                    content.innerHTML = '<div class="error">Ошибка загрузки данных об услугах: ' + data.error + '</div>';
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки услуг предприятия:', error);
+                content.innerHTML = '<div class="error">Ошибка загрузки данных об услугах: ' + error.message + '</div>';
+            }
+        }
+
+        // Отрисовка таблицы услуг предприятия
+        function renderEnterpriseServicesTable(services, container, enterpriseName) {
+            if (!services || services.length === 0) {
+                container.innerHTML = '<div class="error">Нет данных об услугах для этого предприятия</div>';
+                return;
+            }
+
+            let tableHTML = `
+                <h3 style="margin-bottom: 20px;">Предприятие: ${enterpriseName}</h3>
+                <table class="enterprise-services-table">
+                    <thead>
+                        <tr>
+                            <th>Наименование вида услуг</th>
+                            <th>План всего</th>
+                            <th>Фактическое выполнение</th>
+                            <th>Процент выполнения</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            services.forEach(service => {
+                const percentageClass = service.percentage >= 100 ? 'percentage-positive' : 'percentage-negative';
+
+                tableHTML += `
+                    <tr>
+                        <td style="text-align: left;">${service.service_name}</td>
+                        <td>${formatNumber(service.plan_total)}</td>
+                        <td>${formatNumber(service.fact_total)}</td>
+                        <td class="${percentageClass}">${service.percentage.toFixed(2)}%</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            container.innerHTML = tableHTML;
+        }
+
+        // Вернуться к списку предприятий
+        function backToEnterprises() {
+            document.getElementById('enterpriseServicesModal').style.display = 'none';
+            document.getElementById('detailsModal').style.display = 'block';
+        }
+
+        // Продолжить к выбору районов
+        function continueToDistricts() {
+            if (selectedRegion) {
+                window.location.href = `/reports/district/regions/${selectedRegion}/districts?user_login={{ username }}&user_role={{ user_role }}`;
+            }
+        }
+
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            loadRegions();
+            loadFilterData();
+
+            // Настройка модальных окон
+            const detailsModal = document.getElementById('detailsModal');
+            const enterpriseModal = document.getElementById('enterpriseServicesModal');
+            const closeButtons = document.getElementsByClassName('close');
+            const tabButtons = document.querySelectorAll('.tab-button');
+
+            // Закрытие модальных окон
+            Array.from(closeButtons).forEach(btn => {
+                btn.onclick = function() {
+                    detailsModal.style.display = 'none';
+                    enterpriseModal.style.display = 'none';
+                };
+            });
+
+            window.onclick = function(event) {
+                if (event.target == detailsModal) {
+                    detailsModal.style.display = 'none';
+                }
+                if (event.target == enterpriseModal) {
+                    enterpriseModal.style.display = 'none';
+                }
+            };
+
+            // Переключение табов
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const tabName = this.getAttribute('data-tab');
+
+                    // Убираем активный класс у всех кнопок и контента
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+                    // Добавляем активный класс текущей кнопке и контенту
+                    this.classList.add('active');
+                    document.getElementById(`${tabName}-tab`).classList.add('active');
+                });
+            });
+
+            // Кнопка продолжения
+            document.getElementById('continueBtn').addEventListener('click', continueToDistricts);
+        });
+
+        // Проверка авторизации
+        const isLoggedIn = localStorage.getItem('is_logged_in');
+        if (isLoggedIn !== 'true') {
+            window.location.href = '/login';
+        }
+
+        // ========== НАЧАЛО КОДА ФИЛЬТРА ДЛЯ СВОДНОГО ОТЧЕТА ==========
+
+// Переменные для фильтров
+let locationsList = [];
+
+// Загрузка данных для фильтров
+async function loadFilterData() {
+    try {
+        // Загружаем локации
+        const locationsResponse = await fetch('/api/filters/locations');
+        const locationsData = await locationsResponse.json();
+
+        if (locationsData.success) {
+            locationsList = {
+                regions: locationsData.regions,
+                districts: locationsData.districts
+            };
+            const locationSelect = document.getElementById('filterLocation');
+
+            // Добавляем области
+            if (locationsList.regions.length > 0) {
+                const regionGroup = document.createElement('optgroup');
+                regionGroup.label = 'Области';
+                locationsList.regions.forEach(region => {
+                    const option = document.createElement('option');
+                    option.value = region.id;
+                    option.textContent = region.name;
+                    regionGroup.appendChild(option);
+                });
+                locationSelect.appendChild(regionGroup);
+            }
+
+            // Добавляем районы
+            if (locationsList.districts.length > 0) {
+                const districtGroup = document.createElement('optgroup');
+                districtGroup.label = 'Районы';
+                locationsList.districts.forEach(district => {
+                    const option = document.createElement('option');
+                    option.value = district.id;
+                    option.textContent = district.name;
+                    districtGroup.appendChild(option);
+                });
+                locationSelect.appendChild(districtGroup);
+            }
+        }
+
+    } catch (error) {
+        console.error('Ошибка загрузки данных для фильтров:', error);
+        showFilterError('Ошибка загрузки данных для фильтров');
+    }
+}
+
+// Показать ошибку фильтра
+function showFilterError(message) {
+    const errorDiv = document.getElementById('filterError');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+}
+
+// Скрыть ошибку фильтра
+function hideFilterError() {
+    document.getElementById('filterError').style.display = 'none';
+}
+
+// Валидация формы фильтра
+function validateFilterForm() {
+    const startYear = document.getElementById('startYear').value;
+    const endYear = document.getElementById('endYear').value;
+    const location = document.getElementById('filterLocation').value;
+
+    if (!startYear || !endYear) {
+        showFilterError('Заполните период (год с и по)');
+        return false;
+    }
+
+    if (parseInt(startYear) > parseInt(endYear)) {
+        showFilterError('Год "с" не может быть больше года "по"');
+        return false;
+    }
+
+    if (!location) {
+        showFilterError('Выберите район или область');
+        return false;
+    }
+
+    hideFilterError();
+    return true;
+}
+
+// Генерация сводного отчета по фильтру
+async function generateFilteredSummary() {
+    if (!validateFilterForm()) {
+        return;
+    }
+
+    const startYear = document.getElementById('startYear').value;
+    const endYear = document.getElementById('endYear').value;
+    const location = document.getElementById('filterLocation').value;
+
+    // Определяем тип локации
+    const locationType = location.startsWith('region_') ? 'region' : 'district';
+
+    try {
+        // Формируем URL для нового endpoint
+        const params = new URLSearchParams({
+            start_year: startYear,
+            end_year: endYear,
+            location_id: location,
+            location_type: locationType,
+            user_login: '{{ username }}',
+            user_role: '{{ user_role }}'
+        });
+
+        // Перенаправляем на страницу фильтрованного сводного отчета
+        window.location.href = `/reports/district/filtered-summary?${params.toString()}`;
+
+    } catch (error) {
+        console.error('Ошибка при формировании отчета:', error);
+        showFilterError('Ошибка соединения с сервером');
+    }
+}
+
+// Автозаполнение года "по" при вводе года "с"
+document.getElementById('startYear').addEventListener('change', function() {
+    const startYear = this.value;
+    const endYearInput = document.getElementById('endYear');
+
+    if (startYear && !endYearInput.value) {
+        endYearInput.value = startYear;
+    }
+});
+
+// ========== КОНЕЦ КОДА ФИЛЬТРА ДЛЯ СВОДНОГО ОТЧЕТА ==========
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Отчёт по предприятию - Выбор области</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: #333;
+        }
+
+        .breadcrumb {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+
+        .breadcrumb a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            color: white;
+            font-size: 0.9em;
+            transition: background 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-primary { background: #007bff; }
+        .btn-secondary { background: #6c757d; }
+        .btn-danger { background: #dc3545; }
+        .btn-success { background: #28a745; }
+        .btn-info { background: #17a2b8; }
+        .btn:hover { opacity: 0.9; }
+
+        .regions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .region-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid #007bff;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .region-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        .region-card.selected {
+            border-left-color: #28a745;
+            background: #f8fff9;
+        }
+
+        .region-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .region-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+        }
+
+        .region-stats {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .stat-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .stat-section h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+
+        .stat-label {
+            color: #666;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .percentage-positive { color: #28a745; }
+        .percentage-negative { color: #dc3545; }
+
+        .dynamics-positive { color: #28a745; }
+        .dynamics-negative { color: #dc3545; }
+
+        .details-btn {
+            width: 100%;
+            padding: 10px;
+            background: #17a2b8;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+
+        .details-btn:hover {
+            background: #138496;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 12px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 20px;
+            transition: background 0.3s;
+        }
+
+        .action-btn:hover {
+            background: #218838;
+        }
+
+        .action-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        /* Модальное окно */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 2% auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .services-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .services-table th,
+        .services-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .services-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+
+        .services-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .enterprise-info {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .enterprise-info h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+
+        .enterprise-info p {
+            margin: 0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Шапка -->
+        <div class="header">
+            <h1>🌍 Отчёт по предприятию - Выбор области</h1>
+            <div class="nav-buttons">
+                <a href="/reports/enterprise/{{ reg_number }}/periods?user_login={{ username }}&user_role={{ user_role }}" class="btn btn-secondary">
+                    ⬅️ Назад к периодам
+                </a>
+                <a href="/dashboard?user_login={{ username }}&user_role={{ user_role }}" class="btn btn-primary">
+                    🏠 На главную
+                </a>
+                <a href="/logout" class="btn btn-danger">🚪 Выйти</a>
+            </div>
+        </div>
+
+        <!-- Хлебные крошки -->
+        <div class="breadcrumb">
+            <strong>Шаг 2.5 из 4:</strong>
+            <a href="/reports/enterprise?user_login={{ username }}&user_role={{ user_role }}">Предприятия</a> →
+            <a href="/reports/enterprise/{{ reg_number }}/periods?user_login={{ username }}&user_role={{ user_role }}">Периоды</a> →
+            Выберите область для анализа
+        </div>
+
+        <!-- Информация о предприятии и периоде -->
+        <div id="contextInfo" class="loading">
+            Загрузка информации...
+        </div>
+
+        <!-- Список областей -->
+        <div id="regionsContainer">
+            <div class="loading">Загрузка областей...</div>
+        </div>
+
+        <!-- Кнопка продолжения -->
+        <button class="action-btn" id="continueBtn" disabled>
+            ✅ Продолжить с выбранной областью
+        </button>
+    </div>
+
+    <!-- Модальное окно детализации услуг -->
+    <div id="servicesModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>📋 Детальная информация по услугам в области</h2>
+            <div id="services-content">
+                <div class="loading">Загрузка данных...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedRegion = null;
+        const regNumber = {{ reg_number }};
+        const year = {{ year }};
+
+        // Форматирование чисел
+        function formatNumber(num) {
+            return new Intl.NumberFormat('ru-RU').format(num);
+        }
+
+        // Загрузка контекстной информации (предприятие и период)
+        async function loadContextInfo() {
+            try {
+                // Загружаем информацию о предприятии
+                const enterprisesResponse = await fetch('/api/reports/enterprises');
+                const enterprisesData = await enterprisesResponse.json();
+
+                if (enterprisesData.success) {
+                    const enterprise = enterprisesData.enterprises.find(e => e.reg_number === regNumber);
+                    if (enterprise) {
+                        document.getElementById('contextInfo').innerHTML = `
+                            <div class="enterprise-info">
+                                <h3>🏢 ${enterprise.name}</h3>
+                                <p><strong>Регистрационный номер:</strong> ${enterprise.reg_number} |
+                                   <strong>Отчётный период:</strong> ${year} год</p>
+                                <p>Выберите область, в которой хотите проанализировать деятельность предприятия</p>
+                            </div>
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки контекстной информации:', error);
+                document.getElementById('contextInfo').innerHTML = `
+                    <div class="enterprise-info">
+                        <h3>🏢 Предприятие #${regNumber}</h3>
+                        <p><strong>Отчётный период:</strong> ${year} год</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Загрузка списка областей
+        async function loadRegions() {
+            try {
+                const response = await fetch(`/api/reports/enterprise/${regNumber}/periods/${year}/regions`);
+                const data = await response.json();
+
+                const container = document.getElementById('regionsContainer');
+
+                if (data.success && data.regions.length > 0) {
+                    let html = '<div class="regions-grid">';
+
+                    data.regions.forEach(region => {
+                        const totalPercentageClass = region.total_percentage >= 100 ? 'percentage-positive' : 'percentage-negative';
+                        const ruralPercentageClass = region.rural_plan > 0 ?
+                            (region.rural_percentage >= 100 ? 'percentage-positive' : 'percentage-negative') : '';
+                        const dynamicsTotalClass = region.dynamics_total >= 100 ? 'dynamics-positive' : 'dynamics-negative';
+                        const dynamicsRuralClass = region.dynamics_rural >= 100 ? 'dynamics-positive' : 'dynamics-negative';
+
+                        const ruralPlanDisplay = region.rural_plan > 0 ? formatNumber(region.rural_plan) : '—';
+                        const ruralFactDisplay = region.rural_fact > 0 ? formatNumber(region.rural_fact) : '—';
+                        const ruralPercentageDisplay = region.rural_plan > 0 ? region.rural_percentage.toFixed(2) + '%' : '—';
+                        const dynamicsRuralDisplay = region.rural_plan > 0 ? region.dynamics_rural.toFixed(2) + '%' : '—';
+
+                        html += `
+                            <div class="region-card" onclick="selectRegion(${region.region_code})" id="region-${region.region_code}">
+                                <div class="region-header">
+                                    <h3 class="region-name">${region.region_name}</h3>
+                                    <div class="region-stats">
+                                        Районов: ${region.districts_count} | Услуг: ${region.services_count}
+                                    </div>
+                                </div>
+
+                                <div class="stats-grid">
+                                    <div class="stat-section">
+                                        <h4>📊 Всего по области</h4>
+                                        <div class="stat-item">
+                                            <span class="stat-label">План:</span>
+                                            <span class="stat-value">${formatNumber(region.total_plan)}</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Факт:</span>
+                                            <span class="stat-value">${formatNumber(region.total_fact)}</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Выполнение:</span>
+                                            <span class="stat-value ${totalPercentageClass}">${region.total_percentage.toFixed(2)}%</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">От прошлого года(%):</span>
+                                            <span class="stat-value ${dynamicsTotalClass}">${region.dynamics_total.toFixed(2)}%</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="stat-section">
+                                        <h4>🌾 Сельская местность</h4>
+                                        <div class="stat-item">
+                                            <span class="stat-label">План:</span>
+                                            <span class="stat-value">${ruralPlanDisplay}</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Факт:</span>
+                                            <span class="stat-value">${ruralFactDisplay}</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Выполнение:</span>
+                                            <span class="stat-value ${ruralPercentageClass}">${ruralPercentageDisplay}</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">От прошлого года(%):</span>
+                                            <span class="stat-value ${dynamicsRuralClass}">${dynamicsRuralDisplay}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button class="details-btn" onclick="event.stopPropagation(); showServicesDetail(${region.region_code})">
+                                    📋 Показать детализацию по услугам
+                                </button>
+                            </div>
+                        `;
+                    });
+
+                    html += '</div>';
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = `
+                        <div class="error">
+                            ${data.success ? 'Нет данных по областям для выбранного предприятия и периода' : 'Ошибка загрузки: ' + data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки областей:', error);
+                document.getElementById('regionsContainer').innerHTML = `
+                    <div class="error">Ошибка загрузки данных: ${error.message}</div>
+                `;
+            }
+        }
+
+        // Выбор области
+        function selectRegion(regionCode) {
+            // Снимаем выделение со всех карточек
+            document.querySelectorAll('.region-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            // Выделяем выбранную карточку
+            const selectedCard = document.getElementById(`region-${regionCode}`);
+            if (selectedCard) {
+                selectedCard.classList.add('selected');
+                selectedRegion = regionCode;
+                document.getElementById('continueBtn').disabled = false;
+            }
+        }
+
+        // Показать детализацию услуг в области
+        async function showServicesDetail(regionCode) {
+            const modal = document.getElementById('servicesModal');
+            const content = document.getElementById('services-content');
+
+            content.innerHTML = '<div class="loading">Загрузка данных...</div>';
+            modal.style.display = 'block';
+
+            try {
+                const response = await fetch(`/api/reports/enterprise/${regNumber}/periods/${year}/regions/${regionCode}/services`);
+                const data = await response.json();
+
+                console.log('🔍 DEBUG: Данные услуг по области', regionCode, data);
+
+                if (data.success) {
+                    let tableHTML = `
+                        <table class="services-table">
+                            <thead>
+                                <tr>
+                                    <th>Наименование вида услуг</th>
+                                    <th>План всего</th>
+                                    <th>Фактически выполнено</th>
+                                    <th>Процент выполнения</th>
+                                    <th>От прошлого года(%)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    if (data.services && data.services.length > 0) {
+                        data.services.forEach(service => {
+                            const percentageClass = service.percentage >= 100 ? 'percentage-positive' : 'percentage-negative';
+                            const dynamicsClass = service.dynamics !== null ?
+                                (service.dynamics >= 100 ? 'dynamics-positive' : 'dynamics-negative') : '';
+                            const dynamicsDisplay = service.dynamics !== null ?
+                                service.dynamics.toFixed(2) + '%' : '—';
+
+                            tableHTML += `
+                                <tr>
+                                    <td style="text-align: left;">${service.service_name}</td>
+                                    <td>${formatNumber(service.plan_total)}</td>
+                                    <td>${formatNumber(service.fact_total)}</td>
+                                    <td class="${percentageClass}">${service.percentage.toFixed(2)}%</td>
+                                    <td class="${dynamicsClass}">${dynamicsDisplay}</td>
+                                </tr>
+                            `;
+                        });
+                    } else {
+                        tableHTML += `
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: #666;">
+                                    Нет данных по услугам в выбранной области
+                                </td>
+                            </tr>
+                        `;
+                    }
+
+                    tableHTML += '</tbody></table>';
+
+                    // Добавляем информацию о годах
+                    const yearsInfo = data.previous_year ?
+                        `<p><strong>Период сравнения:</strong> ${data.current_year} год vs ${data.previous_year} год</p>` :
+                        `<p><strong>Период:</strong> ${data.current_year} год (нет данных за предыдущий год для сравнения)</p>`;
+
+                    content.innerHTML = yearsInfo + tableHTML;
+                } else {
+                    content.innerHTML = `<div class="error">Ошибка: ${data.error}</div>`;
+                }
+            } catch (error) {
+                console.error('❌ Ошибка при загрузке услуг по области:', error);
+                content.innerHTML = '<div class="error">Ошибка соединения: ' + error.message + '</div>';
+            }
+        }
+
+        // Продолжить на следующий шаг (выбор района)
+        function continueToNextStep() {
+            if (selectedRegion) {
+                window.location.href = `/reports/enterprise/${regNumber}/periods/${year}/regions/${selectedRegion}/districts?user_login={{ username }}&user_role={{ user_role }}`;
+            }
+        }
+
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            loadContextInfo();
+            loadRegions();
+
+            // Настройка модального окна
+            const modal = document.getElementById('servicesModal');
+            const closeBtn = document.getElementsByClassName('close')[0];
+
+            closeBtn.onclick = function() {
+                modal.style.display = 'none';
+            };
+
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = 'none';
+                }
+            };
+
+            // Кнопка продолжения
+            document.getElementById('continueBtn').addEventListener('click', continueToNextStep);
+        });
+
+        // Проверка авторизации
+        const isLoggedIn = localStorage.getItem('is_logged_in');
+        if (isLoggedIn !== 'true') {
+            window.location.href = '/login';
+        }
+    </script>
+</body>
+</html>

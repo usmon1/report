@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Проверка авторизации</title>
+    <script>
+        function checkAuth() {
+            const user_login = localStorage.getItem('user_login');
+            const user_role = localStorage.getItem('user_role');
+            const login_type = localStorage.getItem('login_type');
+            const is_logged_in = localStorage.getItem('is_logged_in');
+
+            if (is_logged_in === 'true' && user_login && user_role) {
+                // Перенаправляем на dashboard с параметрами
+                window.location.href = `/dashboard?user_login=${encodeURIComponent(user_login)}&user_role=${encodeURIComponent(user_role)}&login_type=${encodeURIComponent(login_type || 'user')}`;
+            } else {
+                // Не авторизован - на страницу входа
+                window.location.href = '/login';
+            }
+        }
+
+        // Выполняем при загрузке страницы
+        checkAuth();
+    </script>
+</head>
+<body>
+    <div style="text-align: center; margin-top: 100px;">
+        <h1>🔐 Проверка авторизации...</h1>
+        <p>Пожалуйста, подождите</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,866 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Отчётные периоды - Панель администратора{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h1 class="page-title">📅 Управление отчётными периодами</h1>
+    <div class="header-actions">
+        <button class="btn btn-primary" onclick="openAddModal()">
+            ➕ Добавить период
+        </button>
+        <button class="btn btn-warning" onclick="openEditModal()" id="editBtn" disabled>
+            ✏️ Редактировать
+        </button>
+        <button class="btn btn-danger" onclick="deletePeriod()" id="deleteBtn" disabled>
+            🗑️ Удалить
+        </button>
+    </div>
+</div>
+
+<!-- Фильтры -->
+<div class="filters-section">
+    <div class="filter-row">
+        <div class="filter-group">
+            <label for="enterpriseFilter">Предприятие:</label>
+            <select id="enterpriseFilter" onchange="filterPeriods()">
+                <option value="">Все предприятия</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="yearFilter">Отчётный период:</label>
+            <select id="yearFilter" onchange="filterPeriods()">
+                <option value="">Все периоды</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <button class="btn btn-secondary" onclick="clearFilters()">🔄 Сбросить</button>
+        </div>
+    </div>
+</div>
+
+<!-- Основная таблица -->
+<div class="table-container">
+    <table id="periodsTable" class="data-table">
+        <thead>
+            <tr>
+                <th width="40"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
+                <th>Предприятие</th>
+                <th>Регистрационный номер</th>
+                <th>Отчётный период</th>
+                <th>ФИО директора</th>
+            </tr>
+        </thead>
+        <tbody id="periodsTableBody">
+            <!-- Данные будут загружены через JavaScript -->
+        </tbody>
+    </table>
+    <div class="loading" id="loadingIndicator">Загрузка отчётных периодов...</div>
+</div>
+
+<!-- Модальное окно добавления/редактирования -->
+<div id="periodModal" class="modal">
+    <div class="modal-content large-modal">
+        <div class="modal-header">
+            <h3 id="modalTitle">✏️ Добавление отчётного периода</h3>
+            <span class="close" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="modal-layout">
+                <!-- Левая часть - Основная форма -->
+                <div class="form-section">
+                    <h4>📝 Основная форма</h4>
+                    <form id="periodForm">
+                        <div class="form-group">
+                            <label for="enterpriseSelect">Предприятие *</label>
+                            <div class="select-with-search">
+                                <select id="enterpriseSelect" name="enterprise" required>
+                                    <option value="">-- Выберите предприятие --</option>
+                                </select>
+                                <button type="button" class="search-btn" onclick="showReference('enterprises')">🔍</button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="reportYear">Отчётный период *</label>
+                            <input type="number" id="reportYear" name="reportYear" required 
+                                   placeholder="Введите год (например: 2024)" min="2000" max="2100">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="directorName">ФИО директора</label>
+                            <input type="text" id="directorName" name="directorName" 
+                                   placeholder="Введите ФИО директора">
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Правая часть - Справочники -->
+                <div class="reference-section">
+                    <h4>📚 Справочники</h4>
+                    <div class="reference-tabs">
+                        <button class="tab-btn active" onclick="showReference('enterprises')">🏢 Предприятия</button>
+                    </div>
+                    
+                    <div class="reference-search">
+                        <input type="text" id="referenceSearch" placeholder="🔍 Поиск..." 
+                               onkeyup="searchReference()">
+                    </div>
+                    
+                    <div class="reference-table-container">
+                        <table class="reference-table">
+                            <thead>
+                                <tr>
+                                    <th width="100">Рег. номер</th>
+                                    <th>Наименование</th>
+                                </tr>
+                            </thead>
+                            <tbody id="referenceTableBody">
+                                <!-- Данные справочников -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">❌ Отмена</button>
+            <button type="button" class="btn btn-primary" onclick="savePeriod()">💾 Сохранить</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div id="confirmModal" class="modal">
+    <div class="modal-content confirm-modal">
+        <div class="modal-header">
+            <h3>⚠️ Подтверждение удаления</h3>
+        </div>
+        <div class="modal-body">
+            <p>Вы действительно хотите удалить выбранный отчётный период?</p>
+            <p id="confirmMessage" class="warning-text"></p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeConfirmModal()">❌ Нет, отменить</button>
+            <button type="button" class="btn btn-danger" onclick="confirmDelete()">✅ Да, удалить</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Стили для фильтров */
+    .filters-section {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+
+    .filter-row {
+        display: flex;
+        gap: 20px;
+        align-items: end;
+        flex-wrap: wrap;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .filter-group label {
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .filter-group select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        min-width: 200px;
+    }
+
+    /* Остальные стили аналогичны enterprises.html */
+    .table-container {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+        margin-top: 20px;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .data-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .data-table tbody tr:hover {
+        background: #f8f9fa;
+        cursor: pointer;
+    }
+
+    .data-table tbody tr.selected {
+        background: #e3f2fd;
+    }
+
+    /* Модальные окна */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+        background: white;
+        margin: 2% auto;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+
+    .large-modal {
+        width: 90%;
+        max-width: 1200px;
+        height: 80vh;
+    }
+
+    .confirm-modal {
+        width: 500px;
+    }
+
+    .modal-header {
+        padding: 20px;
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-body {
+        padding: 20px;
+        height: calc(100% - 120px);
+        overflow-y: auto;
+    }
+
+    .modal-footer {
+        padding: 15px 20px;
+        border-top: 1px solid #e0e0e0;
+        text-align: right;
+    }
+
+    .close {
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        color: #999;
+    }
+
+    .close:hover {
+        color: #333;
+    }
+
+    /* Layout модального окна */
+    .modal-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        height: 100%;
+    }
+
+    .form-section, .reference-section {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-section h4, .reference-section h4 {
+        margin-bottom: 20px;
+        color: #333;
+    }
+
+    /* Форма */
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .form-group input, .form-group select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+    }
+
+    .form-group input:focus, .form-group select:focus {
+        outline: none;
+        border-color: #007bff;
+    }
+
+    .select-with-search {
+        display: flex;
+        gap: 5px;
+    }
+
+    .select-with-search select {
+        flex: 1;
+    }
+
+    .search-btn {
+        padding: 10px 15px;
+        background: #f8f9fa;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .search-btn:hover {
+        background: #e9ecef;
+    }
+
+    /* Справочники */
+    .reference-tabs {
+        display: flex;
+        margin-bottom: 15px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .tab-btn {
+        padding: 10px 15px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+    }
+
+    .tab-btn.active {
+        border-bottom-color: #007bff;
+        color: #007bff;
+    }
+
+    .reference-search {
+        margin-bottom: 15px;
+    }
+
+    .reference-search input {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+
+    .reference-table-container {
+        flex: 1;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+
+    .reference-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .reference-table th,
+    .reference-table td {
+        padding: 8px 12px;
+        border-bottom: 1px solid #e0e0e0;
+        text-align: left;
+    }
+
+    .reference-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+    }
+
+    .reference-table tbody tr:hover {
+        background: #f8f9fa;
+        cursor: pointer;
+    }
+
+    /* Кнопки */
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-left: 10px;
+    }
+
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-primary {
+        background: #007bff;
+        color: white;
+    }
+
+    .btn-warning {
+        background: #ffc107;
+        color: #333;
+    }
+
+    .btn-danger {
+        background: #dc3545;
+        color: white;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .warning-text {
+        color: #dc3545;
+        font-weight: 600;
+        margin-top: 10px;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+</style>
+
+<script>
+    // Глобальные переменные
+    let periods = [];
+    let selectedPeriod = null;
+    let enterprises = [];
+    let currentReference = 'enterprises';
+    let references = {
+        enterprises: []
+    };
+
+    // Инициализация при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        loadPeriods();
+        loadEnterprisesForFilter();
+        loadReferences();
+    });
+
+    // Функция загрузки отчётных периодов
+    async function loadPeriods() {
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const tableBody = document.getElementById('periodsTableBody');
+        
+        try {
+            loadingIndicator.style.display = 'block';
+            tableBody.innerHTML = '';
+            
+            const response = await fetch('/api/admin/periods');
+            const data = await response.json();
+            
+            if (data.success) {
+                periods = data.periods;
+                renderPeriodsTable();
+                updateYearFilterOptions();
+            } else {
+                tableBody.innerHTML = `<tr><td colspan="5" class="error">Ошибка загрузки: ${data.error}</td></tr>`;
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки периодов:', error);
+            tableBody.innerHTML = `<tr><td colspan="5" class="error">Ошибка загрузки: ${error.message}</td></tr>`;
+        } finally {
+            loadingIndicator.style.display = 'none';
+        }
+    }
+
+    // Функция обновления опций фильтра годов
+    function updateYearFilterOptions() {
+        const yearFilter = document.getElementById('yearFilter');
+        const currentValue = yearFilter.value;
+        
+        yearFilter.innerHTML = '<option value="">Все периоды</option>';
+        
+        // Получаем уникальные годы из периодов
+        const uniqueYears = [...new Set(periods.map(p => p.year))].sort((a, b) => b - a);
+        
+        uniqueYears.forEach(year => {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearFilter.appendChild(option);
+        });
+        
+        if (currentValue) {
+            yearFilter.value = currentValue;
+        }
+    }
+
+    // Функция загрузки предприятий для фильтра
+    async function loadEnterprisesForFilter() {
+        try {
+            const response = await fetch('/api/admin/reference/enterprises');
+            const data = await response.json();
+            
+            if (data.success) {
+                enterprises = data.data;
+                const enterpriseFilter = document.getElementById('enterpriseFilter');
+                
+                enterprises.forEach(enterprise => {
+                    const option = document.createElement('option');
+                    option.value = enterprise.reg_number;
+                    option.textContent = `${enterprise.name} (${enterprise.reg_number})`;
+                    enterpriseFilter.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки предприятий для фильтра:', error);
+        }
+    }
+
+    // Функция отрисовки таблицы периодов
+    function renderPeriodsTable(filteredPeriods = null) {
+        const tableBody = document.getElementById('periodsTableBody');
+        const dataToRender = filteredPeriods || periods;
+        
+        if (dataToRender.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px;">Нет отчётных периодов для отображения</td></tr>';
+            return;
+        }
+        
+        tableBody.innerHTML = dataToRender.map(period => {
+            const isSelected = selectedPeriod && 
+                              parseInt(selectedPeriod.reg_number) === parseInt(period.reg_number) && 
+                              parseInt(selectedPeriod.year) === parseInt(period.year);
+            
+            return `
+                <tr onclick="selectPeriod('${period.reg_number}', ${period.year})" 
+                    class="${isSelected ? 'selected' : ''}">
+                    <td>
+                        <input type="checkbox" 
+                               onchange="togglePeriodSelection('${period.reg_number}', ${period.year})" 
+                               ${isSelected ? 'checked' : ''}>
+                    </td>
+                    <td>${escapeHtml(period.enterprise_name)}</td>
+                    <td>${period.reg_number}</td>
+                    <td>${period.year}</td>
+                    <td>${escapeHtml(period.director_name || '—')}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // Функция выбора периода
+    function selectPeriod(regNumber, year) {
+        const numRegNumber = parseInt(regNumber);
+        const numYear = parseInt(year);
+        
+        selectedPeriod = periods.find(p => 
+            parseInt(p.reg_number) === numRegNumber && parseInt(p.year) === numYear
+        );
+        
+        // Снимаем выделение со всех строк
+        document.querySelectorAll('#periodsTableBody tr').forEach(tr => {
+            tr.classList.remove('selected');
+        });
+        
+        // Выделяем текущую строку
+        event.currentTarget.classList.add('selected');
+        
+        updateActionButtons();
+    }
+
+    // Функция для чекбокса
+    function togglePeriodSelection(regNumber, year) {
+        const numRegNumber = parseInt(regNumber);
+        const numYear = parseInt(year);
+        
+        if (selectedPeriod && selectedPeriod.reg_number === numRegNumber && selectedPeriod.year === numYear) {
+            selectedPeriod = null;
+        } else {
+            selectedPeriod = periods.find(p => 
+                parseInt(p.reg_number) === numRegNumber && parseInt(p.year) === numYear
+            );
+        }
+        
+        renderPeriodsTable();
+        updateActionButtons();
+        event.stopPropagation();
+    }
+
+    // Функция обновления состояния кнопок действий
+    function updateActionButtons() {
+        const editBtn = document.getElementById('editBtn');
+        const deleteBtn = document.getElementById('deleteBtn');
+        
+        if (selectedPeriod) {
+            editBtn.disabled = false;
+            deleteBtn.disabled = false;
+        } else {
+            editBtn.disabled = true;
+            deleteBtn.disabled = true;
+        }
+    }
+
+    // Функция фильтрации периодов
+    function filterPeriods() {
+        const enterpriseFilter = document.getElementById('enterpriseFilter').value;
+        const yearFilter = document.getElementById('yearFilter').value;
+        
+        let filteredPeriods = periods;
+        
+        if (enterpriseFilter) {
+            filteredPeriods = filteredPeriods.filter(period => 
+                period.reg_number.toString() === enterpriseFilter
+            );
+        }
+        
+        if (yearFilter) {
+            filteredPeriods = filteredPeriods.filter(period => 
+                period.year.toString() === yearFilter
+            );
+        }
+        
+        renderPeriodsTable(filteredPeriods);
+    }
+
+    // Функция сброса фильтров
+    function clearFilters() {
+        document.getElementById('enterpriseFilter').value = '';
+        document.getElementById('yearFilter').value = '';
+        renderPeriodsTable();
+    }
+
+    // Функция загрузки справочников
+    async function loadReferences() {
+        try {
+            const response = await fetch('/api/admin/reference/enterprises');
+            const data = await response.json();
+            
+            if (data.success) {
+                references.enterprises = data.data;
+                fillEnterpriseSelect();
+                showReference('enterprises');
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки справочников:', error);
+        }
+    }
+
+    // Функция заполнения выпадающего списка предприятий
+    function fillEnterpriseSelect() {
+        const select = document.getElementById('enterpriseSelect');
+        const currentValue = select.value;
+        
+        select.innerHTML = '<option value="">-- Выберите предприятие --</option>';
+        references.enterprises.forEach(enterprise => {
+            const option = document.createElement('option');
+            option.value = enterprise.reg_number;
+            option.textContent = `${enterprise.name} (${enterprise.reg_number})`;
+            select.appendChild(option);
+        });
+        
+        if (currentValue) {
+            select.value = currentValue;
+        }
+    }
+
+    // Функция показа справочника
+    function showReference(type) {
+        currentReference = type;
+        
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        const tableBody = document.getElementById('referenceTableBody');
+        const data = references[type];
+        
+        tableBody.innerHTML = data.map(item => `
+            <tr onclick="selectReferenceItem('${type}', '${item.reg_number}', '${escapeHtml(item.name)}')">
+                <td>${item.reg_number}</td>
+                <td>${escapeHtml(item.name)}</td>
+            </tr>
+        `).join('');
+        
+        document.getElementById('referenceSearch').value = '';
+    }
+
+    // Функция выбора элемента из справочника
+    function selectReferenceItem(type, regNumber, name) {
+        document.getElementById('enterpriseSelect').value = regNumber;
+        
+        document.querySelectorAll('#referenceTableBody tr').forEach(tr => {
+            tr.classList.remove('selected');
+        });
+        event.target.closest('tr').classList.add('selected');
+    }
+
+    // Функция поиска в справочнике
+    function searchReference() {
+        const searchTerm = document.getElementById('referenceSearch').value.toLowerCase();
+        const data = references[currentReference];
+        
+        const filteredData = data.filter(item => 
+            item.name.toLowerCase().includes(searchTerm) || 
+            item.reg_number.toString().includes(searchTerm)
+        );
+        
+        const tableBody = document.getElementById('referenceTableBody');
+        tableBody.innerHTML = filteredData.map(item => `
+            <tr onclick="selectReferenceItem('${currentReference}', '${item.reg_number}', '${escapeHtml(item.name)}')">
+                <td>${item.reg_number}</td>
+                <td>${escapeHtml(item.name)}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Функция открытия модального окна добавления
+    function openAddModal() {
+        document.getElementById('modalTitle').textContent = '✏️ Добавление отчётного периода';
+        document.getElementById('periodForm').reset();
+        selectedPeriod = null;
+        document.getElementById('periodModal').style.display = 'block';
+    }
+
+    // Функция открытия модального окна редактирования
+    function openEditModal() {
+        if (!selectedPeriod) return;
+        
+        document.getElementById('modalTitle').textContent = '✏️ Редактирование отчётного периода';
+        document.getElementById('enterpriseSelect').value = selectedPeriod.reg_number;
+        document.getElementById('enterpriseSelect').disabled = true;
+        document.getElementById('reportYear').value = selectedPeriod.year;
+        document.getElementById('reportYear').readOnly = true;
+        document.getElementById('directorName').value = selectedPeriod.director_name || '';
+        
+        document.getElementById('periodModal').style.display = 'block';
+    }
+
+    // Функция закрытия модального окна
+    function closeModal() {
+        document.getElementById('periodModal').style.display = 'none';
+        document.getElementById('enterpriseSelect').disabled = false;
+        document.getElementById('reportYear').readOnly = false;
+    }
+
+    // Функция сохранения периода
+    async function savePeriod() {
+        const formData = {
+            reg_number: document.getElementById('enterpriseSelect').value,
+            year: parseInt(document.getElementById('reportYear').value),
+            director_name: document.getElementById('directorName').value || null
+        };
+        
+        if (!formData.reg_number || !formData.year) {
+            alert('Пожалуйста, заполните обязательные поля (Предприятие и Отчётный период)');
+            return;
+        }
+        
+        try {
+            const url = selectedPeriod ? 
+                `/api/admin/periods/${selectedPeriod.reg_number}/${selectedPeriod.year}` : 
+                '/api/admin/periods';
+                
+            const method = selectedPeriod ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                closeModal();
+                loadPeriods();
+                showNotification('Отчётный период успешно сохранен', 'success');
+            } else {
+                alert(`Ошибка сохранения: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Ошибка сохранения периода:', error);
+            alert('Ошибка сохранения отчётного периода');
+        }
+    }
+
+    // Функция удаления периода
+    function deletePeriod() {
+        if (!selectedPeriod) return;
+        
+        document.getElementById('confirmMessage').textContent = 
+            `Предприятие: "${selectedPeriod.enterprise_name}" (Год: ${selectedPeriod.year})`;
+        document.getElementById('confirmModal').style.display = 'block';
+    }
+
+    // Функция подтверждения удаления
+    async function confirmDelete() {
+        if (!selectedPeriod) return;
+        
+        try {
+            const response = await fetch(`/api/admin/periods/${selectedPeriod.reg_number}/${selectedPeriod.year}`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                closeConfirmModal();
+                selectedPeriod = null;
+                loadPeriods();
+                showNotification('Отчётный период успешно удален', 'success');
+            } else {
+                alert(`Ошибка удаления: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Ошибка удаления периода:', error);
+            alert('Ошибка удаления отчётного периода');
+        }
+    }
+
+    // Функция закрытия модального окна подтверждения
+    function closeConfirmModal() {
+        document.getElementById('confirmModal').style.display = 'none';
+    }
+
+    // Вспомогательные функции
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function showNotification(message, type) {
+        alert(message);
+    }
+
+    // Глобальная функция для обновления данных
+    window.refreshPageData = function() {
+        loadPeriods();
+    };
+</script>
+{% endblock %}

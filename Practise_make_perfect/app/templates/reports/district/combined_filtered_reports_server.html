@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Объединенные отчеты предприятий - Фильтрованный отчет</title>
+    <style>
+        /* Стили из combined_reports_server.html с адаптацией для фильтрованного отчета */
+        body {
+            font-family: 'Times New Roman', serif;
+            margin: 0;
+            padding: 20px;
+            background: white;
+            color: black;
+            font-size: 14px;
+            line-height: 1.3;
+        }
+
+        .blank-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                padding: 0;
+                margin: 0;
+            }
+            .blank-container {
+                max-width: 100%;
+                margin: 0;
+            }
+            .enterprise-report {
+                page-break-after: always;
+            }
+        }
+
+        .form-number {
+            text-align: right;
+            font-weight: bold;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .enterprise-info {
+            margin-bottom: 20px;
+        }
+
+        .enterprise-line {
+            margin-bottom: 8px;
+        }
+
+        .codes-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border: 1px solid #333;
+        }
+
+        .codes-table td {
+            border: 1px solid #333;
+            text-align: center;
+            padding: 8px;
+            width: 25%;
+        }
+
+        .report-title {
+            text-align: center;
+            margin: 30px 0;
+            font-weight: bold;
+        }
+
+        .main-title {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .sub-title {
+            font-size: 15px;
+        }
+
+        .services-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border: 1px solid #333;
+        }
+
+        .services-table th,
+        .services-table td {
+            border: 1px solid #333;
+            padding: 8px 4px;
+            text-align: center;
+            vertical-align: top;
+        }
+
+        .services-table th {
+            font-weight: bold;
+        }
+
+        .service-name {
+            text-align: left;
+            width: 40%;
+        }
+
+        .code-col {
+            width: 12%;
+        }
+
+        .plan-col {
+            width: 12%;
+        }
+
+        .fact-col {
+            width: 12%;
+        }
+
+        .previous-col {
+            width: 12%;
+        }
+
+        .sub-service {
+            padding-left: 20px !important;
+        }
+
+        .signature-section {
+            margin-top: 40px;
+        }
+
+        .date-line {
+            margin-bottom: 40px;
+        }
+
+        .director-section {
+            display: flex;
+            align-items: flex-start;
+            gap: 50px;
+            margin-top: 20px;
+        }
+
+        .signature-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 200px;
+        }
+
+        .signature-line {
+            width: 200px;
+            border-bottom: 1px solid #000;
+            margin-bottom: 5px;
+            position: relative;
+            height: 20px;
+        }
+
+        .signature-label {
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .director-name {
+            text-align: right;
+            flex-grow: 1;
+            margin-left: 0px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 16px;
+        }
+
+        .error {
+            background: #ffe6e6;
+            border: 1px solid #ff0000;
+            padding: 15px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        /* Стили для объединенного отчета */
+        .combined-header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 20px;
+        }
+
+        .combined-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .combined-subtitle {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .enterprise-report {
+            page-break-after: always;
+            margin-bottom: 40px;
+        }
+
+        .nav-buttons {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f5f5f5;
+        }
+
+        .btn {
+            margin: 0 10px;
+            padding: 8px 15px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-info {
+            background: #17a2b8;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print nav-buttons">
+        <a href="/reports/district/filtered-summary?user_login={{ username }}&user_role={{ user_role }}&location_id={{ location_id }}&location_type={{ location_type }}&start_year={{ start_year }}&end_year={{ end_year }}"
+           class="btn btn-secondary">
+            ⬅️ Назад к сводному отчету
+        </a>
+        <button onclick="exportToPDF()" class="btn btn-success">
+            📄 Экспорт в PDF
+        </button>
+        <button onclick="window.print()" class="btn btn-info">
+            🖨️ Печать
+        </button>
+    </div>
+    
+    <!-- Обложка -->
+    <div class="no-print combined-header">
+        <div class="combined-title">СВОД ОТЧЕТОВ ПРЕДПРИЯТИЙ</div>
+        <div class="combined-subtitle">Район:{{ location_name }}</div>
+        
+        <div class="combined-subtitle">Область: {{ region_name }}</div>
+        
+        <div class="combined-subtitle">
+            Отчетный период: 
+            {% if start_year == end_year %}
+                {{ start_year }} год
+            {% else %}
+                с {{ start_year }} по {{ end_year }} год
+            {% endif %}
+        </div>
+        <div class="combined-subtitle">Всего предприятий: {{ enterprises|length }}</div>
+        <div class="combined-subtitle">Дата формирования: <span id="current-date"></span></div>
+    </div>
+
+    <div id="pdf-content">
+    <!-- Отчеты предприятий -->
+    {% for enterprise in enterprises %}
+    <div class="enterprise-report">
+        <div class="blank-container">
+            <div class="form-number">Форма № ПУ-1</div>
+
+            <div class="enterprise-info">
+                <div class="enterprise-line">
+                    Наименование предприятия: <strong>{{ enterprise.report_data.enterprise_name or 'Не указано' }}</strong>
+                </div>
+                <div class="enterprise-line">
+                    Регистр №: <strong>{{ enterprise.report_data.registration_number or 'Не указан' }}</strong>
+                </div>
+            </div>
+
+            <table class="codes-table">
+                <tr>
+                    <td>Код мин-ва</td>
+                    <td>Код отрасли</td>
+                    <td>Код области</td>
+                    <td>Код района</td>
+                </tr>
+                <tr>
+                    <td>{{ enterprise.report_data.ministry_code or '' }}</td>
+                    <td>{{ enterprise.report_data.industry_code or '' }}</td>
+                    <td>{{ enterprise.report_data.region_code or '' }}</td>
+                    <td>{{ enterprise.report_data.district_code or '' }}</td>
+                </tr>
+            </table>
+
+            <div class="report-title">
+                <div class="main-title">ОТЧЕТ</div>
+                <div class="sub-title">
+                    О выполнении плана по предоставлению услуг 
+                    {% if enterprise.report_data.is_single_year %}
+                        за {{ enterprise.report_data.start_year }} г.
+                    {% else %}
+                        за период с {{ enterprise.report_data.start_year }} по {{ enterprise.report_data.end_year }} г.
+                    {% endif %}
+                </div>
+            </div>
+
+            <table class="services-table">
+                <thead>
+                    <tr>
+                        <th class="service-name">Наименование вида услуг</th>
+                        <th class="code-col">Код показателя</th>
+                        <th class="plan-col">План(всего)</th>
+                        <th class="fact-col">Фактически выполнено(всего)</th>
+                        {% if enterprise.report_data.is_single_year %}
+                            <th class="previous-col">Выполнено за прошлый год</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for service in enterprise.report_data.services %}
+                    <tr class="{% if 'в т.ч. в сельской местности' in service.service_name %}sub-service{% endif %}">
+                        <td class="service-name">{{ service.service_name }}</td>
+                        <td>{{ service.indicator_code or '' }}</td>
+                        <td>{{ "{:,.0f}".format(service.plan_total).replace(",", " ") if service.plan_total else '' }}</td>
+                        <td>{{ "{:,.0f}".format(service.fact_total).replace(",", " ") if service.fact_total else '' }}</td>
+                        {% if enterprise.report_data.is_single_year %}
+                            <td>{{ "{:,.0f}".format(service.previous_year).replace(",", " ") if service.previous_year else '' }}</td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="signature-section">
+                <div class="date-line">
+                    Дата составления: <strong id="current-date-{{ loop.index }}"></strong>
+                </div>
+
+                <div style="display: flex; align-items: center; margin-top: 20px;">
+                    <span style="margin-right: 10px;">Директор предприятия:</span>
+                    <div class="signature-block" style="margin-right: 20px;">
+                        <div class="signature-line"></div>
+                        <div class="signature-label">(подпись)</div>
+                    </div>
+                    <div class="signature-block">
+                        <span class="director-name">{{ enterprise.report_data.director_name or 'Не указано' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <script>
+        // Функция для форматирования даты
+        function formatCurrentDate() {
+            const now = new Date();
+            const day = now.getDate().toString().padStart(2, '0');
+            const month = (now.getMonth() + 1).toString().padStart(2, '0');
+            const year = now.getFullYear();
+            return `"${day}" ${getMonthName(now.getMonth())} ${year} г.`;
+        }
+
+        function getMonthName(monthIndex) {
+            const months = [
+                'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+                'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+            ];
+            return months[monthIndex];
+        }
+
+        // Устанавливаем текущую дату
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentDate = formatCurrentDate();
+            document.getElementById('current-date').textContent = currentDate;
+            
+            // Устанавливаем даты для каждого отчета
+            const dateElements = document.querySelectorAll('[id^="current-date-"]');
+            dateElements.forEach(element => {
+                element.textContent = currentDate;
+            });
+        });
+
+        // Экспорт в PDF
+        function exportToPDF() {
+            const element = document.getElementById('pdf-content');
+            const locationType = '{{ location_type }}';
+            const locationId = '{{ location_id }}'.split('_')[1];
+            const startYear = '{{ start_year }}';
+            const endYear = '{{ end_year }}';
+            
+            const filename = locationType === 'region' 
+                ? `отчеты_предприятий_область_${locationId}_${startYear}-${endYear}.pdf`
+                : `отчеты_предприятий_район_${locationId}_${startYear}-${endYear}.pdf`;
+
+            const options = {
+                margin: 10,
+                filename: filename,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { 
+                    scale: 2,
+                    useCORS: true,
+                    logging: false
+                },
+                jsPDF: { 
+                    unit: 'mm', 
+                    format: 'a4', 
+                    orientation: 'portrait' 
+                }
+            };
+
+            const loadingDiv = document.createElement('div');
+            loadingDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                padding: 20px;
+                border: 2px solid #007bff;
+                border-radius: 10px;
+                z-index: 10000;
+                box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            `;
+            loadingDiv.innerHTML = '<div style="text-align: center;">📄 Генерация PDF...<br><small>Пожалуйста, подождите</small></div>';
+            
+            document.body.appendChild(loadingDiv);
+
+            html2pdf().set(options).from(element).save().then(() => {
+                document.body.removeChild(loadingDiv);
+            }).catch(error => {
+                document.body.removeChild(loadingDiv);
+                alert('Ошибка: ' + error.message);
+            });
+        }
+    </script>
+</body>
+</html>

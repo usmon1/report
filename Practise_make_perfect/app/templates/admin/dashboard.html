@@ -1,0 +1,222 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Дашборд - Панель администратора{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h1 class="page-title">📊 Дашборд системы</h1>
+    <div class="header-actions">
+        <button class="btn btn-primary" onclick="refreshDashboard()">
+            🔄 Обновить статистику
+        </button>
+    </div>
+</div>
+
+<!-- Статистика -->
+<div class="stats-grid" id="stats-grid">
+    <div class="loading">Загрузка статистики...</div>
+</div>
+
+<!-- Быстрый доступ -->
+<div class="quick-actions">
+    <h2>🚀 Быстрый доступ</h2>
+    <div class="actions-grid" id="quick-actions">
+        <!-- Быстро заполнится JavaScript -->
+    </div>
+</div>
+
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-left: 4px solid var(--primary-color);
+        transition: transform 0.3s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .stat-card.enterprises { border-left-color: #007bff; }
+    .stat-card.services { border-left-color: #28a745; }
+    .stat-card.periods { border-left-color: #ffc107; }
+    .stat-card.users { border-left-color: #dc3545; }
+
+    .stat-number {
+        font-size: 2.5em;
+        font-weight: bold;
+        color: var(--dark-color);
+        margin-bottom: 5px;
+    }
+
+    .stat-label {
+        font-size: 1em;
+        color: #666;
+        margin-bottom: 10px;
+    }
+
+    .stat-trend {
+        font-size: 0.9em;
+        padding: 3px 8px;
+        border-radius: 12px;
+        background: #f8f9fa;
+        display: inline-block;
+    }
+
+    .trend-up { color: #28a745; }
+    .trend-down { color: #dc3545; }
+
+    .quick-actions {
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .quick-actions h2 {
+        margin-bottom: 20px;
+        color: var(--dark-color);
+    }
+
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+
+    .action-card {
+        background: var(--light-color);
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        border: 2px solid transparent;
+    }
+
+    .action-card:hover {
+        background: var(--primary-color);
+        color: white;
+        transform: translateY(-2px);
+        border-color: var(--primary-color);
+    }
+
+    .action-icon {
+        font-size: 2em;
+        margin-bottom: 10px;
+    }
+
+    .action-label {
+        font-weight: 600;
+    }
+</style>
+
+<script>
+    // Функция для загрузки статистики дашборда
+    async function loadDashboardStats() {
+        const statsGrid = document.getElementById('stats-grid');
+        
+        try {
+            const response = await fetch('/api/admin/dashboard-stats');
+            const data = await response.json();
+
+            if (data.success) {
+                renderStats(data.stats);
+                renderQuickActions();
+            } else {
+                statsGrid.innerHTML = `<div class="error">Ошибка загрузки статистики: ${data.error}</div>`;
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки статистики:', error);
+            statsGrid.innerHTML = `<div class="error">Ошибка загрузки статистики: ${error.message}</div>`;
+        }
+    }
+
+    // Функция для отрисовки статистики
+    function renderStats(stats) {
+        const statsGrid = document.getElementById('stats-grid');
+        
+        statsGrid.innerHTML = `
+            <div class="stat-card enterprises">
+                <div class="stat-number">${stats.enterprises_count || 0}</div>
+                <div class="stat-label">🏢 Предприятий в системе</div>
+                <div class="stat-trend trend-up">+${stats.enterprises_trend || 0} за месяц</div>
+            </div>
+            
+            <div class="stat-card services">
+                <div class="stat-number">${stats.services_count || 0}</div>
+                <div class="stat-label">⚙️ Услуг зарегистрировано</div>
+                <div class="stat-trend trend-up">+${stats.services_trend || 0} за месяц</div>
+            </div>
+            
+            <div class="stat-card periods">
+                <div class="stat-number">${stats.periods_count || 0}</div>
+                <div class="stat-label">📅 Отчётных периодов/периода зарегистрировано (всего)</div>
+                <div class="stat-trend trend-up">+${stats.periods_trend || 0} за месяц</div>
+            </div>
+            
+            <div class="stat-card users">
+                <div class="stat-number">${stats.users_count || 0}</div>
+                <div class="stat-label">👤 Пользователей системы</div>
+                <div class="stat-trend trend-up">+${stats.users_trend || 0} за месяц</div>
+            </div>
+        `;
+    }
+
+    // Функция для отрисовки быстрых действий
+    function renderQuickActions() {
+        const quickActions = document.getElementById('quick-actions');
+        
+        quickActions.innerHTML = `
+            <div class="action-card" onclick="navigateTo('/admin/enterprises?user_login={{ username }}&user_role={{ user_role }}')">
+                <div class="action-icon">🏢</div>
+                <div class="action-label">Управление предприятиями</div>
+            </div>
+            
+            <div class="action-card" onclick="navigateTo('/admin/services?user_login={{ username }}&user_role={{ user_role }}')">
+                <div class="action-icon">⚙️</div>
+                <div class="action-label">Управление услугами</div>
+            </div>
+            
+            <div class="action-card" onclick="navigateTo('/admin/periods?user_login={{ username }}&user_role={{ user_role }}')">
+                <div class="action-icon">📅</div>
+                <div class="action-label">Отчётные периоды</div>
+            </div>
+            
+            <div class="action-card" onclick="navigateTo('/admin/users?user_login={{ username }}&user_role={{ user_role }}')">
+                <div class="action-icon">👤</div>
+                <div class="action-label">Управление пользователями</div>
+            </div>
+        `;
+    }
+
+    // Функция навигации
+    function navigateTo(url) {
+        window.location.href = url;
+    }
+
+    // Функция обновления дашборда
+    function refreshDashboard() {
+        loadDashboardStats();
+    }
+
+    // Глобальная функция для обновления данных страницы
+    window.refreshPageData = function() {
+        loadDashboardStats();
+    };
+
+    // Загрузка данных при открытии страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDashboardStats();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Регистрация</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            width: 350px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 1.5rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .btn {
+            width: 100%;
+            padding: 10px;
+            background: #ffa726;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+        .btn:hover {
+            background: #ff9800;
+        }
+        .btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        .back-btn {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #666;
+            text-decoration: none;
+        }
+        .password-hint {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+        .error {
+            color: red;
+            text-align: center;
+            margin-top: 1rem;
+            display: none;
+        }
+        .success {
+            color: green;
+            text-align: center;
+            margin-top: 1rem;
+            display: none;
+        }
+        .status {
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+            height: 1rem;
+        }
+        .status.available {
+            color: green;
+        }
+        .status.taken {
+            color: red;
+        }
+        .status.checking {
+            color: orange;
+        }
+        .password-strength {
+            margin-top: 0.5rem;
+        }
+        .strength-bar {
+            height: 5px;
+            background: #eee;
+            border-radius: 2px;
+            margin-top: 5px;
+        }
+        .strength-fill {
+            height: 100%;
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s, background 0.3s;
+        }
+        .strength-weak { background: #ff4444; width: 33%; }
+        .strength-medium { background: #ffa726; width: 66%; }
+        .strength-strong { background: #4CAF50; width: 100%; }
+
+        /* Стили для кнопок показа пароля */
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .password-wrapper input {
+            padding-right: 40px;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 5px;
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+        .toggle-password:hover {
+            background: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-btn">⬅️ На главную</a>
+        <h1>📝 Регистрация</h1>
+
+        <form id="registerForm">
+            <div class="form-group">
+                <label>ФИО:</label>
+                <input type="text" name="full_name" required>
+            </div>
+
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" name="email" required id="emailInput">
+                <div class="status" id="emailStatus"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Логин:</label>
+                <input type="text" name="username" required id="loginInput">
+                <div class="status" id="loginStatus"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Пароль:</label>
+                <div class="password-wrapper">
+                    <input type="password" name="password" required minlength="6" id="passwordInput">
+                    <button type="button" class="toggle-password" data-target="passwordInput">👁️</button>
+                </div>
+                <div class="password-hint">Минимум 6 символов</div>
+
+                <div class="password-strength">
+                    <div>Сложность пароля:</div>
+                    <div class="strength-bar">
+                        <div class="strength-fill" id="passwordStrength"></div>
+                    </div>
+                    <div class="status" id="passwordStrengthText"></div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Подтверждение пароля:</label>
+                <div class="password-wrapper">
+                    <input type="password" name="password_confirm" required id="passwordConfirmInput">
+                    <button type="button" class="toggle-password" data-target="passwordConfirmInput">👁️</button>
+                </div>
+                <div class="status" id="passwordConfirmStatus"></div>
+            </div>
+
+            <button type="submit" class="btn" id="submitButton">✅ Зарегистрироваться</button>
+        </form>
+
+        <div id="errorMessage" class="error"></div>
+        <div id="successMessage" class="success"></div>
+    </div>
+
+    <script>
+        // Функция для переключения видимости пароля
+        function setupPasswordToggles() {
+            const toggleButtons = document.querySelectorAll('.toggle-password');
+
+            toggleButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-target');
+                    const passwordInput = document.getElementById(targetId);
+
+                    if (passwordInput.type === 'password') {
+                        passwordInput.type = 'text';
+                        this.textContent = '🔒';
+                    } else {
+                        passwordInput.type = 'password';
+                        this.textContent = '👁️';
+                    }
+                });
+            });
+        }
+
+        // Элементы формы
+        const emailInput = document.getElementById('emailInput');
+        const loginInput = document.getElementById('loginInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const passwordConfirmInput = document.getElementById('passwordConfirmInput');
+        const submitButton = document.getElementById('submitButton');
+
+        // Элементы статуса
+        const emailStatus = document.getElementById('emailStatus');
+        const loginStatus = document.getElementById('loginStatus');
+        const passwordConfirmStatus = document.getElementById('passwordConfirmStatus');
+        const passwordStrength = document.getElementById('passwordStrength');
+        const passwordStrengthText = document.getElementById('passwordStrengthText');
+
+        // Таймеры для отложенной проверки
+        let emailCheckTimer;
+        let loginCheckTimer;
+
+        // Флаги валидности
+        let isEmailValid = false;
+        let isLoginValid = false;
+        let isPasswordValid = false;
+        let isPasswordConfirmed = false;
+
+        // Проверка email в реальном времени
+        emailInput.addEventListener('input', function() {
+            clearTimeout(emailCheckTimer);
+            const email = emailInput.value.trim();
+
+            if (email.length === 0) {
+                emailStatus.textContent = '';
+                isEmailValid = false;
+                updateSubmitButton();
+                return;
+            }
+
+            // Базовая валидация email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                emailStatus.textContent = 'Некорректный формат email';
+                emailStatus.className = 'status taken';
+                isEmailValid = false;
+                updateSubmitButton();
+                return;
+            }
+
+            emailStatus.textContent = 'Проверка...';
+            emailStatus.className = 'status checking';
+
+            emailCheckTimer = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/api/check_email?email=${encodeURIComponent(email)}`);
+                    const result = await response.json();
+
+                    if (result.available) {
+                        emailStatus.textContent = '✓ Email доступен';
+                        emailStatus.className = 'status available';
+                        isEmailValid = true;
+                    } else {
+                        emailStatus.textContent = '✗ Email уже занят';
+                        emailStatus.className = 'status taken';
+                        isEmailValid = false;
+                    }
+                    updateSubmitButton();
+                } catch (error) {
+                    emailStatus.textContent = '✗ Ошибка проверки';
+                    emailStatus.className = 'status taken';
+                    isEmailValid = false;
+                    updateSubmitButton();
+                }
+            }, 500);
+        });
+
+        // Проверка логина в реальном времени
+        loginInput.addEventListener('input', function() {
+            clearTimeout(loginCheckTimer);
+            const login = loginInput.value.trim();
+
+            if (login.length === 0) {
+                loginStatus.textContent = '';
+                isLoginValid = false;
+                updateSubmitButton();
+                return;
+            }
+
+            if (login.length < 3) {
+                loginStatus.textContent = 'Логин должен быть не менее 3 символов';
+                loginStatus.className = 'status taken';
+                isLoginValid = false;
+                updateSubmitButton();
+                return;
+            }
+
+            loginStatus.textContent = 'Проверка...';
+            loginStatus.className = 'status checking';
+
+            loginCheckTimer = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/api/check_login?login=${encodeURIComponent(login)}`);
+                    const result = await response.json();
+
+                    if (result.available) {
+                        loginStatus.textContent = '✓ Логин доступен';
+                        loginStatus.className = 'status available';
+                        isLoginValid = true;
+                    } else {
+                        loginStatus.textContent = '✗ Логин уже занят';
+                        loginStatus.className = 'status taken';
+                        isLoginValid = false;
+                    }
+                    updateSubmitButton();
+                } catch (error) {
+                    loginStatus.textContent = '✗ Ошибка проверки';
+                    loginStatus.className = 'status taken';
+                    isLoginValid = false;
+                    updateSubmitButton();
+                }
+            }, 500);
+        });
+
+        // Проверка сложности пароля
+        passwordInput.addEventListener('input', function() {
+            const password = passwordInput.value;
+
+            if (password.length === 0) {
+                passwordStrength.className = 'strength-fill';
+                passwordStrengthText.textContent = '';
+                isPasswordValid = false;
+                updateSubmitButton();
+                return;
+            }
+
+            let strength = 0;
+            let text = '';
+
+            // Критерии сложности
+            if (password.length >= 6) strength += 1;
+            if (password.length >= 8) strength += 1;
+            if (/[a-z]/.test(password)) strength += 1;
+            if (/[A-Z]/.test(password)) strength += 1;
+            if (/[0-9]/.test(password)) strength += 1;
+            if (/[^a-zA-Z0-9]/.test(password)) strength += 1;
+
+            if (strength <= 2) {
+                passwordStrength.className = 'strength-fill strength-weak';
+                passwordStrengthText.textContent = 'Слабый пароль';
+                passwordStrengthText.className = 'status taken';
+            } else if (strength <= 4) {
+                passwordStrength.className = 'strength-fill strength-medium';
+                passwordStrengthText.textContent = 'Средний пароль';
+                passwordStrengthText.className = 'status checking';
+            } else {
+                passwordStrength.className = 'strength-fill strength-strong';
+                passwordStrengthText.textContent = 'Надежный пароль';
+                passwordStrengthText.className = 'status available';
+            }
+
+            isPasswordValid = password.length >= 6;
+            updateSubmitButton();
+            checkPasswordConfirm();
+        });
+
+        // Проверка подтверждения пароля
+        passwordConfirmInput.addEventListener('input', checkPasswordConfirm);
+
+        function checkPasswordConfirm() {
+            const password = passwordInput.value;
+            const confirm = passwordConfirmInput.value;
+
+            if (confirm.length === 0) {
+                passwordConfirmStatus.textContent = '';
+                isPasswordConfirmed = false;
+            } else if (password === confirm) {
+                passwordConfirmStatus.textContent = '✓ Пароли совпадают';
+                passwordConfirmStatus.className = 'status available';
+                isPasswordConfirmed = true;
+            } else {
+                passwordConfirmStatus.textContent = '✗ Пароли не совпадают';
+                passwordConfirmStatus.className = 'status taken';
+                isPasswordConfirmed = false;
+            }
+            updateSubmitButton();
+        }
+
+        // Обновление состояния кнопки отправки
+        function updateSubmitButton() {
+            if (isEmailValid && isLoginValid && isPasswordValid && isPasswordConfirmed) {
+                submitButton.disabled = false;
+            } else {
+                submitButton.disabled = true;
+            }
+        }
+
+        // Обработка отправки формы
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const full_name = formData.get('full_name');
+            const email = formData.get('email');
+            const username = formData.get('username');
+            const password = formData.get('password');
+            const password_confirm = formData.get('password_confirm');
+
+            // Скрываем предыдущие сообщения
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+
+            // Дополнительная проверка на всякий случай
+            if (!isEmailValid || !isLoginValid || !isPasswordValid || !isPasswordConfirmed) {
+                document.getElementById('errorMessage').textContent = 'Пожалуйста, исправьте ошибки в форме';
+                document.getElementById('errorMessage').style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `full_name=${encodeURIComponent(full_name)}&email=${encodeURIComponent(email)}&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&password_confirm=${encodeURIComponent(password_confirm)}`
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Показываем сообщение об успехе
+                    document.getElementById('successMessage').textContent = result.message;
+                    document.getElementById('successMessage').style.display = 'block';
+
+                    // Перенаправляем через 2 секунды
+                    setTimeout(function() {
+                        window.location.href = result.redirect_url;
+                    }, 2000);
+                } else {
+                    // Показываем ошибку
+                    document.getElementById('errorMessage').textContent = result.error;
+                    document.getElementById('errorMessage').style.display = 'block';
+                }
+            } catch (error) {
+                document.getElementById('errorMessage').textContent = 'Ошибка соединения с сервером';
+                document.getElementById('errorMessage').style.display = 'block';
+                console.error('Ошибка:', error);
+            }
+        });
+
+        // Изначально блокируем кнопку и настраиваем переключатели пароля
+        updateSubmitButton();
+        setupPasswordToggles();
+    </script>
+</body>
+</html>

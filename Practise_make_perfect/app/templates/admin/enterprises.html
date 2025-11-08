@@ -1,0 +1,806 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Управление предприятиями - Панель администратора{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h1 class="page-title">🏢 Управление предприятиями</h1>
+    <div class="header-actions">
+        <button class="btn btn-primary" onclick="openAddModal()">
+            ➕ Добавить предприятие
+        </button>
+        <button class="btn btn-warning" onclick="openEditModal()" id="editBtn" disabled>
+            ✏️ Редактировать
+        </button>
+        <button class="btn btn-danger" onclick="deleteEnterprise()" id="deleteBtn" disabled>
+            🗑️ Удалить
+        </button>
+    </div>
+</div>
+
+<!-- Поиск и фильтры -->
+<div class="filters-section">
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="🔍 Поиск по наименованию предприятия..." 
+               onkeyup="filterEnterprises()" style="width: 300px; padding: 8px;">
+    </div>
+</div>
+
+<!-- Основная таблица -->
+<div class="table-container">
+    <table id="enterprisesTable" class="data-table">
+        <thead>
+            <tr>
+                <th width="40"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
+                <th>Наименование предприятия</th>
+                <th>Регистрационный номер</th>
+                <th>Код министерства</th>
+                <th>Код отрасли</th>
+                <th>Код области</th>
+            </tr>
+        </thead>
+        <tbody id="enterprisesTableBody">
+            <!-- Данные будут загружены через JavaScript -->
+        </tbody>
+    </table>
+    <div class="loading" id="loadingIndicator">Загрузка предприятий...</div>
+</div>
+
+<!-- Модальное окно добавления/редактирования -->
+<div id="enterpriseModal" class="modal">
+    <div class="modal-content large-modal">
+        <div class="modal-header">
+            <h3 id="modalTitle">📝 Добавление предприятия</h3>
+            <span class="close" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="modal-layout">
+                <!-- Левая часть - Основная форма -->
+                <div class="form-section">
+                    <h4>📝 Основная форма</h4>
+                    <form id="enterpriseForm">
+                        <div class="form-group">
+                            <label for="enterpriseName">Наименование предприятия *</label>
+                            <input type="text" id="enterpriseName" name="enterpriseName" required 
+                                   placeholder="Введите наименование предприятия">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regNumber">Регистрационный номер *</label>
+                            <input type="number" id="regNumber" name="regNumber" required 
+                                   placeholder="Введите регистрационный номер">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="ministryCode">Код министерства</label>
+                            <div class="select-with-search">
+                                <select id="ministryCode" name="ministryCode">
+                                    <option value="">-- Выберите министерство --</option>
+                                </select>
+                                <button type="button" class="search-btn" onclick="showReference('ministries')">🔍</button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="industryCode">Код отрасли</label>
+                            <div class="select-with-search">
+                                <select id="industryCode" name="industryCode">
+                                    <option value="">-- Выберите отрасль --</option>
+                                </select>
+                                <button type="button" class="search-btn" onclick="showReference('industries')">🔍</button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regionCode">Код области</label>
+                            <div class="select-with-search">
+                                <select id="regionCode" name="regionCode">
+                                    <option value="">-- Выберите область --</option>
+                                </select>
+                                <button type="button" class="search-btn" onclick="showReference('regions')">🔍</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Правая часть - Справочники -->
+                <div class="reference-section">
+                    <h4>📚 Справочники</h4>
+                    <div class="reference-tabs">
+                        <button class="tab-btn active" onclick="showReference('ministries')">🏛️ Министерства</button>
+                        <button class="tab-btn" onclick="showReference('industries')">🏭 Отрасли</button>
+                        <button class="tab-btn" onclick="showReference('regions')">🌍 Области</button>
+                    </div>
+                    
+                    <div class="reference-search">
+                        <input type="text" id="referenceSearch" placeholder="🔍 Поиск..." 
+                               onkeyup="searchReference()">
+                    </div>
+                    
+                    <div class="reference-table-container">
+                        <table class="reference-table">
+                            <thead>
+                                <tr>
+                                    <th width="60">ID</th>
+                                    <th width="80">Код</th>
+                                    <th>Наименование</th>
+                                </tr>
+                            </thead>
+                            <tbody id="referenceTableBody">
+                                <!-- Данные справочников -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">❌ Отмена</button>
+            <button type="button" class="btn btn-primary" onclick="saveEnterprise()">💾 Сохранить</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div id="confirmModal" class="modal">
+    <div class="modal-content confirm-modal">
+        <div class="modal-header">
+            <h3>⚠️ Подтверждение удаления</h3>
+        </div>
+        <div class="modal-body">
+            <p>Вы действительно хотите удалить выбранное предприятие?</p>
+            <p id="confirmMessage" class="warning-text"></p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeConfirmModal()">❌ Нет, отменить</button>
+            <button type="button" class="btn btn-danger" onclick="confirmDelete()">✅ Да, удалить</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Стили для таблицы */
+    .table-container {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+        margin-top: 20px;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .data-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .data-table tbody tr:hover {
+        background: #f8f9fa;
+        cursor: pointer;
+    }
+
+    .data-table tbody tr.selected {
+        background: #e3f2fd;
+    }
+
+    /* Стили для модального окна */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+        background: white;
+        margin: 2% auto;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+
+    .large-modal {
+        width: 90%;
+        max-width: 1200px;
+        height: 80vh;
+    }
+
+    .confirm-modal {
+        width: 500px;
+    }
+
+    .modal-header {
+        padding: 20px;
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-body {
+        padding: 20px;
+        height: calc(100% - 120px);
+        overflow-y: auto;
+    }
+
+    .modal-footer {
+        padding: 15px 20px;
+        border-top: 1px solid #e0e0e0;
+        text-align: right;
+    }
+
+    .close {
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        color: #999;
+    }
+
+    .close:hover {
+        color: #333;
+    }
+
+    /* Стили для layout модального окна */
+    .modal-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        height: 100%;
+    }
+
+    .form-section, .reference-section {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-section h4, .reference-section h4 {
+        margin-bottom: 20px;
+        color: #333;
+    }
+
+    /* Стили для формы */
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .form-group input, .form-group select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+    }
+
+    .form-group input:focus, .form-group select:focus {
+        outline: none;
+        border-color: #007bff;
+    }
+
+    .select-with-search {
+        display: flex;
+        gap: 5px;
+    }
+
+    .select-with-search select {
+        flex: 1;
+    }
+
+    .search-btn {
+        padding: 10px 15px;
+        background: #f8f9fa;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .search-btn:hover {
+        background: #e9ecef;
+    }
+
+    /* Стили для справочников */
+    .reference-tabs {
+        display: flex;
+        margin-bottom: 15px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .tab-btn {
+        padding: 10px 15px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+    }
+
+    .tab-btn.active {
+        border-bottom-color: #007bff;
+        color: #007bff;
+    }
+
+    .reference-search {
+        margin-bottom: 15px;
+    }
+
+    .reference-search input {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+
+    .reference-table-container {
+        flex: 1;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+
+    .reference-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .reference-table th,
+    .reference-table td {
+        padding: 8px 12px;
+        border-bottom: 1px solid #e0e0e0;
+        text-align: left;
+    }
+
+    .reference-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+    }
+
+    .reference-table tbody tr:hover {
+        background: #f8f9fa;
+        cursor: pointer;
+    }
+
+    /* Кнопки действий */
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-left: 10px;
+    }
+
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-primary {
+        background: #007bff;
+        color: white;
+    }
+
+    .btn-warning {
+        background: #ffc107;
+        color: #333;
+    }
+
+    .btn-danger {
+        background: #dc3545;
+        color: white;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    /* Фильтры и поиск */
+    .filters-section {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+
+    .search-box input {
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+    }
+
+    /* Текст предупреждения */
+    .warning-text {
+        color: #dc3545;
+        font-weight: 600;
+        margin-top: 10px;
+    }
+
+    /* Загрузка */
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+</style>
+
+<script>
+    // Глобальные переменные
+    let enterprises = [];
+    let selectedEnterprise = null;
+    let currentReference = 'ministries';
+    let references = {
+        ministries: [],
+        industries: [],
+        regions: []
+    };
+
+    // Инициализация при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        loadEnterprises();
+        loadReferences();
+    });
+
+    // Функция загрузки предприятий
+    async function loadEnterprises() {
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const tableBody = document.getElementById('enterprisesTableBody');
+        
+        try {
+            loadingIndicator.style.display = 'block';
+            tableBody.innerHTML = '';
+            
+            const response = await fetch('/api/admin/enterprises');
+            const data = await response.json();
+            
+            if (data.success) {
+                enterprises = data.enterprises;
+                renderEnterprisesTable();
+            } else {
+                tableBody.innerHTML = `<tr><td colspan="6" class="error">Ошибка загрузки: ${data.error}</td></tr>`;
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки предприятий:', error);
+            tableBody.innerHTML = `<tr><td colspan="6" class="error">Ошибка загрузки: ${error.message}</td></tr>`;
+        } finally {
+            loadingIndicator.style.display = 'none';
+        }
+    }
+
+    // Функция отрисовки таблицы предприятий
+    function renderEnterprisesTable() {
+        const tableBody = document.getElementById('enterprisesTableBody');
+        
+        if (enterprises.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px;">Нет предприятий для отображения</td></tr>';
+            return;
+        }
+        
+        tableBody.innerHTML = enterprises.map(enterprise => `
+            <tr onclick="selectEnterprise(${enterprise.reg_number})" 
+                class="${selectedEnterprise && selectedEnterprise.reg_number === enterprise.reg_number ? 'selected' : ''}">
+                <td><input type="checkbox" onchange="toggleEnterpriseSelection(${enterprise.reg_number})" 
+                    ${selectedEnterprise && selectedEnterprise.reg_number === enterprise.reg_number ? 'checked' : ''}></td>
+                <td>${escapeHtml(enterprise.name)}</td>
+                <td>${enterprise.reg_number}</td>
+                <td>${enterprise.ministry_code || '—'}</td>
+                <td>${enterprise.industry_code || '—'}</td>
+                <td>${enterprise.region_code || '—'}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Функция выбора предприятия
+    function selectEnterprise(regNumber) {
+        selectedEnterprise = enterprises.find(e => e.reg_number === regNumber);
+        renderEnterprisesTable();
+        updateActionButtons();
+    }
+
+    // Функция обновления состояния кнопок действий
+    function updateActionButtons() {
+        const editBtn = document.getElementById('editBtn');
+        const deleteBtn = document.getElementById('deleteBtn');
+        
+        if (selectedEnterprise) {
+            editBtn.disabled = false;
+            deleteBtn.disabled = false;
+        } else {
+            editBtn.disabled = true;
+            deleteBtn.disabled = true;
+        }
+    }
+
+    // Функция фильтрации предприятий
+    function filterEnterprises() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        
+        if (!searchTerm) {
+            renderEnterprisesTable();
+            return;
+        }
+        
+        const filteredEnterprises = enterprises.filter(enterprise => 
+            enterprise.name.toLowerCase().includes(searchTerm)
+        );
+        
+        const tableBody = document.getElementById('enterprisesTableBody');
+        tableBody.innerHTML = filteredEnterprises.map(enterprise => `
+            <tr onclick="selectEnterprise(${enterprise.reg_number})" 
+                class="${selectedEnterprise && selectedEnterprise.reg_number === enterprise.reg_number ? 'selected' : ''}">
+                <td><input type="checkbox" onchange="toggleEnterpriseSelection(${enterprise.reg_number})" 
+                    ${selectedEnterprise && selectedEnterprise.reg_number === enterprise.reg_number ? 'checked' : ''}></td>
+                <td>${escapeHtml(enterprise.name)}</td>
+                <td>${enterprise.reg_number}</td>
+                <td>${enterprise.ministry_code || '—'}</td>
+                <td>${enterprise.industry_code || '—'}</td>
+                <td>${enterprise.region_code || '—'}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Функция загрузки справочников
+    async function loadReferences() {
+        try {
+            // Загружаем все справочники параллельно
+            const [ministriesRes, industriesRes, regionsRes] = await Promise.all([
+                fetch('/api/admin/reference/ministries'),
+                fetch('/api/admin/reference/industries'),
+                fetch('/api/admin/reference/regions')
+            ]);
+            
+            const ministriesData = await ministriesRes.json();
+            const industriesData = await industriesRes.json();
+            const regionsData = await regionsRes.json();
+            
+            if (ministriesData.success) references.ministries = ministriesData.data;
+            if (industriesData.success) references.industries = industriesData.data;
+            if (regionsData.success) references.regions = regionsData.data;
+            
+            // Заполняем выпадающие списки
+            fillSelectOptions('ministryCode', references.ministries);
+            fillSelectOptions('industryCode', references.industries);
+            fillSelectOptions('regionCode', references.regions);
+            
+            // Показываем первый справочник по умолчанию
+            showReference('ministries');
+            
+        } catch (error) {
+            console.error('Ошибка загрузки справочников:', error);
+        }
+    }
+
+    // Функция заполнения выпадающих списков
+    function fillSelectOptions(selectId, data) {
+        const select = document.getElementById(selectId);
+        // Сохраняем текущее значение
+        const currentValue = select.value;
+        
+        // Очищаем и заполняем заново
+        select.innerHTML = '<option value="">-- Выберите --</option>';
+        data.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.code;
+            option.textContent = `${item.code} - ${item.name}`;
+            select.appendChild(option);
+        });
+        
+        // Восстанавливаем значение, если оно есть
+        if (currentValue) {
+            select.value = currentValue;
+        }
+    }
+
+    // Функция показа справочника
+    function showReference(type) {
+        currentReference = type;
+        
+        // Обновляем активную вкладку
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        // Заполняем таблицу справочника
+        const tableBody = document.getElementById('referenceTableBody');
+        const data = references[type];
+        
+        tableBody.innerHTML = data.map(item => `
+            <tr onclick="selectReferenceItem('${type}', ${item.code}, '${escapeHtml(item.name)}')">
+                <td>${item.id || '—'}</td>
+                <td>${item.code}</td>
+                <td>${escapeHtml(item.name)}</td>
+            </tr>
+        `).join('');
+        
+        // Очищаем поиск
+        document.getElementById('referenceSearch').value = '';
+    }
+
+    // Функция выбора элемента из справочника
+    function selectReferenceItem(type, code, name) {
+        const selectId = type === 'ministries' ? 'ministryCode' : 
+                        type === 'industries' ? 'industryCode' : 'regionCode';
+        
+        document.getElementById(selectId).value = code;
+        
+        // Подсвечиваем выбранную строку
+        document.querySelectorAll('#referenceTableBody tr').forEach(tr => {
+            tr.classList.remove('selected');
+        });
+        event.target.closest('tr').classList.add('selected');
+    }
+
+    // Функция поиска в справочнике
+    function searchReference() {
+        const searchTerm = document.getElementById('referenceSearch').value.toLowerCase();
+        const data = references[currentReference];
+        
+        const filteredData = data.filter(item => 
+            item.name.toLowerCase().includes(searchTerm) || 
+            item.code.toString().includes(searchTerm)
+        );
+        
+        const tableBody = document.getElementById('referenceTableBody');
+        tableBody.innerHTML = filteredData.map(item => `
+            <tr onclick="selectReferenceItem('${currentReference}', ${item.code}, '${escapeHtml(item.name)}')">
+                <td>${item.id || '—'}</td>
+                <td>${item.code}</td>
+                <td>${escapeHtml(item.name)}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Функция открытия модального окна добавления
+    function openAddModal() {
+        document.getElementById('modalTitle').textContent = '📝 Добавление предприятия';
+        document.getElementById('enterpriseForm').reset();
+        selectedEnterprise = null;
+        document.getElementById('enterpriseModal').style.display = 'block';
+    }
+
+    // Функция открытия модального окна редактирования
+    function openEditModal() {
+        if (!selectedEnterprise) return;
+        
+        document.getElementById('modalTitle').textContent = '✏️ Редактирование предприятия';
+        document.getElementById('enterpriseName').value = selectedEnterprise.name;
+        document.getElementById('regNumber').value = selectedEnterprise.reg_number;
+        document.getElementById('regNumber').readOnly = true; // Рег. номер нельзя менять
+        document.getElementById('ministryCode').value = selectedEnterprise.ministry_code || '';
+        document.getElementById('industryCode').value = selectedEnterprise.industry_code || '';
+        document.getElementById('regionCode').value = selectedEnterprise.region_code || '';
+        
+        document.getElementById('enterpriseModal').style.display = 'block';
+    }
+
+    // Функция закрытия модального окна
+    function closeModal() {
+        document.getElementById('enterpriseModal').style.display = 'none';
+        document.getElementById('regNumber').readOnly = false; // Снимаем блокировку
+    }
+
+    // Функция сохранения предприятия
+    async function saveEnterprise() {
+        const formData = {
+            name: document.getElementById('enterpriseName').value,
+            reg_number: parseInt(document.getElementById('regNumber').value),
+            ministry_code: document.getElementById('ministryCode').value || null,
+            industry_code: document.getElementById('industryCode').value || null,
+            region_code: document.getElementById('regionCode').value || null
+        };
+        
+        // Валидация
+        if (!formData.name || !formData.reg_number) {
+            alert('Пожалуйста, заполните обязательные поля (Наименование и Регистрационный номер)');
+            return;
+        }
+        
+        try {
+            const url = selectedEnterprise ? 
+                `/api/admin/enterprises/${selectedEnterprise.reg_number}` : 
+                '/api/admin/enterprises';
+                
+            const method = selectedEnterprise ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                closeModal();
+                loadEnterprises(); // Перезагружаем таблицу
+                showNotification('Предприятие успешно сохранено', 'success');
+            } else {
+                alert(`Ошибка сохранения: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Ошибка сохранения предприятия:', error);
+            alert('Ошибка сохранения предприятия');
+        }
+    }
+
+    // Функция удаления предприятия
+    function deleteEnterprise() {
+        if (!selectedEnterprise) return;
+        
+        document.getElementById('confirmMessage').textContent = 
+            `Предприятие: "${selectedEnterprise.name}" (Рег. номер: ${selectedEnterprise.reg_number})`;
+        document.getElementById('confirmModal').style.display = 'block';
+    }
+
+    // Функция подтверждения удаления
+    async function confirmDelete() {
+        if (!selectedEnterprise) return;
+        
+        try {
+            const response = await fetch(`/api/admin/enterprises/${selectedEnterprise.reg_number}`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                closeConfirmModal();
+                selectedEnterprise = null;
+                loadEnterprises(); // Перезагружаем таблицу
+                showNotification('Предприятие успешно удалено', 'success');
+            } else {
+                alert(`Ошибка удаления: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Ошибка удаления предприятия:', error);
+            alert('Ошибка удаления предприятия');
+        }
+    }
+
+    // Функция закрытия модального окна подтверждения
+    function closeConfirmModal() {
+        document.getElementById('confirmModal').style.display = 'none';
+    }
+
+    // Вспомогательные функции
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function showNotification(message, type) {
+        // Простая реализация уведомления
+        alert(message);
+    }
+
+    // Глобальная функция для обновления данных
+    window.refreshPageData = function() {
+        loadEnterprises();
+    };
+</script>
+{% endblock %}

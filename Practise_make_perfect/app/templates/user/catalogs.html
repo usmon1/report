@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Справочники</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            color: white;
+            font-size: 0.9em;
+            transition: background 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-primary { background: #007bff; }
+        .btn-secondary { background: #6c757d; }
+        .btn-danger { background: #dc3545; }
+        .btn:hover { opacity: 0.9; }
+
+        .catalogs-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .tab {
+            padding: 15px 25px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95em;
+            color: #495057;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab:hover {
+            background: #e9ecef;
+            color: #007bff;
+        }
+
+        .tab.active {
+            background: white;
+            color: #007bff;
+            border-bottom-color: #007bff;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 25px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .catalog-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .catalog-table th,
+        .catalog-table td {
+            border: 1px solid #dee2e6;
+            padding: 12px 15px;
+            text-align: left;
+        }
+
+        .catalog-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+            position: sticky;
+            top: 0;
+        }
+
+        .catalog-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .catalog-table tr:hover {
+            background-color: #e9ecef;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .search-box {
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            font-size: 0.95em;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+
+        .stats {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+            flex: 1;
+        }
+
+        .stat-number {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+
+        .export-btn {
+            margin-bottom: 15px;
+            padding: 8px 15px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .export-btn:hover {
+            background: #218838;
+        }
+
+        .stats-section {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+        .stats-section h2 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 1.3em;
+}
+
+        .stats-simple {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 10px;
+    font-size: 0.95em;
+}
+
+        .stat-line {
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+        .stat-line:last-child {
+    border-bottom: none;
+}
+
+        .stat-label {
+    color: #666;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+       .stat-value {
+    font-weight: bold;
+    color: #333;
+    font-size: 1.1em;
+}
+                   
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 Справочники системы</h1>
+            <div class="nav-buttons">
+                <a href="/dashboard?user_login={{ username }}&user_role={{ user_role }}" class="btn btn-primary">
+                    🏠 На главную
+                </a>
+                <a href="/reports?user_login={{ username }}&user_role={{ user_role }}" class="btn btn-secondary">
+                    📊 К отчетам
+                </a>
+                <a href="/logout" class="btn btn-danger">🚪 Выйти</a>
+            </div>
+        </div>
+                 <!-- Добавить после header и перед catalogs-container -->
+        <div class="stats-section">
+            <h2>📊 Общая статистика системы</h2>
+            <div class="stats-simple" id="stats-simple">
+                <div class="loading">Загрузка статистики...</div>
+        </div>
+        </div>
+        <div class="catalogs-container">
+            <div class="tabs">
+                <button class="tab active" data-tab="enterprises">🏢 Предприятия</button>
+                <button class="tab" data-tab="ministries">🏛️ Министерства</button>
+                <button class="tab" data-tab="industries">🏭 Отрасли</button>
+                <button class="tab" data-tab="regions">🌍 Области</button>
+                <button class="tab" data-tab="districts">📍 Районы</button>
+                <button class="tab" data-tab="services">📋 Виды услуг</button>
+            </div>
+
+            <!-- Вкладка предприятий -->
+            <div id="enterprises-tab" class="tab-content active">
+                <h2>🏢 Список предприятий</h2>
+                <div class="search-box">
+                    <input type="text" class="search-input" placeholder="Поиск по наименованию предприятия..." onkeyup="filterTable('enterprises-table', this.value, 1)">
+                </div>
+                <table class="catalog-table" id="enterprises-table">
+                    <thead>
+                        <tr>
+                            <th width="80">Рег. номер</th>
+                            <th>Наименование предприятия</th>
+                            <th>Министерство</th>
+                            <th>Отрасль</th>
+                            <th>Область</th>
+                        </tr>
+                    </thead>
+                    <tbody id="enterprises-body">
+                        <tr><td colspan="5" class="loading">Загрузка данных...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Вкладка министерств -->
+            <div id="ministries-tab" class="tab-content">
+                <h2>🏛️ Список министерств</h2>
+                <div class="search-box">
+                    <input type="text" class="search-input" placeholder="Поиск по наименованию министерства..." onkeyup="filterTable('ministries-table', this.value, 1)">
+                </div>
+                <table class="catalog-table" id="ministries-table">
+                    <thead>
+                        <tr>
+                            <th width="100">Код</th>
+                            <th>Наименование министерства</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ministries-body">
+                        <tr><td colspan="2" class="loading">Загрузка данных...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Вкладка отраслей -->
+            <div id="industries-tab" class="tab-content">
+                <h2>🏭 Список отраслей</h2>
+                <div class="search-box">
+                    <input type="text" class="search-input" placeholder="Поиск по наименованию отрасли..." onkeyup="filterTable('industries-table', this.value, 1)">
+                </div>
+                <table class="catalog-table" id="industries-table">
+                    <thead>
+                        <tr>
+                            <th width="100">Код</th>
+                            <th>Наименование отрасли</th>
+                        </tr>
+                    </thead>
+                    <tbody id="industries-body">
+                        <tr><td colspan="2" class="loading">Загрузка данных...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Вкладка областей -->
+            <div id="regions-tab" class="tab-content">
+                <h2>🌍 Список областей</h2>
+                <div class="search-box">
+                    <input type="text" class="search-input" placeholder="Поиск по наименованию области..." onkeyup="filterTable('regions-table', this.value, 1)">
+                </div>
+                <table class="catalog-table" id="regions-table">
+                    <thead>
+                        <tr>
+                            <th width="100">Код</th>
+                            <th>Наименование области</th>
+                        </tr>
+                    </thead>
+                    <tbody id="regions-body">
+                        <tr><td colspan="2" class="loading">Загрузка данных...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Вкладка районов -->
+            <div id="districts-tab" class="tab-content">
+                <h2>📍 Список районов</h2>
+                <div class="search-box">
+                    <input type="text" class="search-input" placeholder="Поиск по наименованию района или области..." onkeyup="filterTable('districts-table', this.value, 1)">
+                </div>
+                <table class="catalog-table" id="districts-table">
+                    <thead>
+                        <tr>
+                            <th width="100">Код района</th>
+                            <th>Наименование района</th>
+                            <th>Область</th>
+                            <th width="100">Код области</th>
+                        </tr>
+                    </thead>
+                    <tbody id="districts-body">
+                        <tr><td colspan="4" class="loading">Загрузка данных...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Вкладка видов услуг -->
+            <div id="services-tab" class="tab-content">
+                <h2>📋 Список видов услуг</h2>
+                <div class="search-box">
+                    <input type="text" class="search-input" placeholder="Поиск по наименованию вида услуг..." onkeyup="filterTable('services-table', this.value, 0)">
+                </div>
+                <table class="catalog-table" id="services-table">
+                    <thead>
+                        <tr>
+                            <th>Наименование вида услуг</th>
+                        </tr>
+                    </thead>
+                    <tbody id="services-body">
+                        <tr><td class="loading">Загрузка данных...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Текущая активная вкладка
+        let currentTab = 'enterprises';
+
+        // Функция для переключения вкладок
+        function switchTab(tabName) {
+    // Скрываем все вкладки
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Убираем активный класс со всех кнопок
+    document.querySelectorAll('.tab').forEach(button => {
+        button.classList.remove('active');
+    });
+    
+    // Показываем выбранную вкладку
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+    
+    // Активируем кнопку
+    const tabButton = document.querySelector(`.tab[data-tab="${tabName}"]`);
+    if (tabButton) {
+        tabButton.classList.add('active');
+    }
+    
+    currentTab = tabName;
+    
+    // Загружаем данные для вкладки, если они еще не загружены
+    loadTabData(tabName);
+}
+
+
+        // Функция для загрузки данных вкладки
+        async function loadTabData(tabName) {
+            const bodyElement = document.getElementById(`${tabName}-body`);
+            
+            // Если данные уже загружены, не загружаем снова
+            if (bodyElement.getAttribute('data-loaded') === 'true') {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/catalogs/${tabName}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    renderTableData(tabName, data[tabName]);
+                    bodyElement.setAttribute('data-loaded', 'true');
+                } else {
+                    bodyElement.innerHTML = `<tr><td colspan="10" class="error">Ошибка загрузки: ${data.error}</td></tr>`;
+                }
+            } catch (error) {
+                console.error(`Ошибка загрузки ${tabName}:`, error);
+                bodyElement.innerHTML = `<tr><td colspan="10" class="error">Ошибка загрузки данных: ${error.message}</td></tr>`;
+            }
+        }
+
+        // Функция для отрисовки данных таблицы
+        function renderTableData(tabName, data) {
+            const bodyElement = document.getElementById(`${tabName}-body`);
+            
+            if (!data || data.length === 0) {
+                bodyElement.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #6c757d;">Нет данных</td></tr>';
+                return;
+            }
+
+            let html = '';
+
+            switch (tabName) {
+                case 'enterprises':
+                    data.forEach(enterprise => {
+                        html += `
+                            <tr>
+                                <td>${enterprise.reg_number}</td>
+                                <td>${enterprise.name}</td>
+                                <td>${enterprise.ministry_name}</td>
+                                <td>${enterprise.industry_name}</td>
+                                <td>${enterprise.region_name}</td>
+                            </tr>
+                        `;
+                    });
+                    break;
+
+                case 'ministries':
+                    data.forEach(ministry => {
+                        html += `
+                            <tr>
+                                <td>${ministry.code}</td>
+                                <td>${ministry.name}</td>
+                            </tr>
+                        `;
+                    });
+                    break;
+
+                case 'industries':
+                    data.forEach(industry => {
+                        html += `
+                            <tr>
+                                <td>${industry.code}</td>
+                                <td>${industry.name}</td>
+                            </tr>
+                        `;
+                    });
+                    break;
+
+                case 'regions':
+                    data.forEach(region => {
+                        html += `
+                            <tr>
+                                <td>${region.code}</td>
+                                <td>${region.name}</td>
+                            </tr>
+                        `;
+                    });
+                    break;
+
+                case 'districts':
+                    data.forEach(district => {
+                        html += `
+                            <tr>
+                                <td>${district.code}</td>
+                                <td>${district.name}</td>
+                                <td>${district.region_name}</td>
+                                <td>${district.region_code}</td>
+                            </tr>
+                        `;
+                    });
+                    break;
+
+                case 'services':
+                    data.forEach(service => {
+                        html += `
+                            <tr>
+                                <td>${service.name}</td>
+                            </tr>
+                        `;
+                    });
+                    break;
+            }
+
+            bodyElement.innerHTML = html;
+        }
+
+        // Функция для фильтрации таблицы
+        function filterTable(tableId, searchText, searchColumnIndex) {
+            const table = document.getElementById(tableId);
+            const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+            
+            for (let i = 0; i < rows.length; i++) {
+                const cell = rows[i].getElementsByTagName('td')[searchColumnIndex];
+                if (cell) {
+                    const text = cell.textContent || cell.innerText;
+                    if (text.toLowerCase().indexOf(searchText.toLowerCase()) > -1) {
+                        rows[i].style.display = '';
+                    } else {
+                        rows[i].style.display = 'none';
+                    }
+                }
+            }
+        }
+
+                                                       // Функция для загрузки статистики
+        // Функция для загрузки статистики
+        async function loadStats() {
+    try {
+        const response = await fetch('/api/catalogs/stats');
+        const data = await response.json();
+
+        if (data.success) {
+            renderSimpleStats(data.stats);
+        } else {
+            document.getElementById('stats-simple').innerHTML = 
+                '<div class="error">Ошибка загрузки статистики: ' + data.error + '</div>';
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки статистики:', error);
+        document.getElementById('stats-simple').innerHTML = 
+            '<div class="error">Ошибка загрузки статистики: ' + error.message + '</div>';
+    }
+}
+
+// Функция для отрисовки простой статистики
+        function renderSimpleStats(stats) {
+    const statsContainer = document.getElementById('stats-simple');
+    
+    const statsConfig = [
+        {
+            key: 'enterprises_count',
+            label: '🏢 Предприятий',
+        },
+        {
+            key: 'ministries_count', 
+            label: '🏛️ Министерств',
+        },
+        {
+            key: 'industries_count',
+            label: '🏭 Отраслей',
+        },
+        {
+            key: 'regions_count',
+            label: '🌍 Областей', 
+        },
+        {
+            key: 'districts_count',
+            label: '📍 Районов',
+        },
+        {
+            key: 'services_count',
+            label: '📋 Видов услуг',
+        }
+    ];
+
+    let html = '';
+    
+    statsConfig.forEach(stat => {
+        const count = stats[stat.key] || 0;
+        html += `
+            <div class="stat-line">
+                <span class="stat-label">${stat.label}</span>
+                <span class="stat-value">${count}</span>
+            </div>
+        `;
+    });
+
+    statsContainer.innerHTML = html;
+} 
+
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+    // Настройка обработчиков для вкладок
+    document.querySelectorAll('.tab').forEach(button => {
+        button.addEventListener('click', function() {
+            const tabName = this.getAttribute('data-tab');
+            switchTab(tabName);
+        });
+    });
+
+    // Загрузка данных для активной вкладки
+    loadTabData(currentTab);
+
+    // Загрузка статистики
+    loadStats();
+
+    // Проверка авторизации
+    const isLoggedIn = localStorage.getItem('is_logged_in');
+    if (isLoggedIn !== 'true') {
+        window.location.href = '/login';
+    }
+});
+    </script>
+</body>
+</html>

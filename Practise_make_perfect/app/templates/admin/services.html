@@ -1,0 +1,1027 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Управление услугами - Панель администратора{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h1 class="page-title">⚙️ Управление услугами</h1>
+    <div class="header-actions">
+        <button class="btn btn-primary" onclick="openAddModal()">
+            ➕ Добавить услугу
+        </button>
+        <button class="btn btn-warning" onclick="openEditModal()" id="editBtn" disabled>
+            ✏️ Редактировать
+        </button>
+        <button class="btn btn-danger" onclick="deleteService()" id="deleteBtn" disabled>
+            🗑️ Удалить
+        </button>
+    </div>
+</div>
+
+<!-- Фильтры -->
+<div class="filters-section">
+    <div class="filter-row">
+        <div class="filter-group">
+            <label for="enterpriseFilter">Предприятие:</label>
+            <select id="enterpriseFilter" onchange="filterServices()">
+                <option value="">Все предприятия</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="yearFilter">Отчётный период:</label>
+            <select id="yearFilter" onchange="filterServices()">
+                <option value="">Все периоды</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="districtFilter">Район:</label>
+            <select id="districtFilter" onchange="filterServices()">
+                <option value="">Все районы</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <button class="btn btn-secondary" onclick="clearFilters()">🔄 Сбросить</button>
+        </div>
+    </div>
+</div>
+
+<!-- Основная таблица -->
+<div class="table-container">
+    <table id="servicesTable" class="data-table">
+        <thead>
+            <tr>
+                <th width="40"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
+                <th>Предприятие</th>
+                <th>Вид услуги</th>
+                <th>Район</th>
+                <th>Период</th>
+                <th>Код показателя</th>
+                <th>План всего</th>
+                <th>Фактически выполнено</th>
+            </tr>
+        </thead>
+        <tbody id="servicesTableBody">
+            <!-- Данные будут загружены через JavaScript -->
+        </tbody>
+    </table>
+    <div class="loading" id="loadingIndicator">Загрузка услуг...</div>
+</div>
+
+<!-- Модальное окно добавления/редактирования -->
+<div id="serviceModal" class="modal">
+    <div class="modal-content large-modal">
+        <div class="modal-header">
+            <h3 id="modalTitle">✏️ Добавление услуги</h3>
+            <span class="close" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="modal-layout">
+                <!-- Левая часть - Основная форма -->
+                <div class="form-section">
+                    <h4>📝 Основная форма</h4>
+                    <form id="serviceForm">
+                        <div class="form-group">
+                            <label for="enterpriseSelect">Предприятие *</label>
+                            <div class="select-with-search">
+                                <select id="enterpriseSelect" name="enterprise" required>
+                                    <option value="">-- Выберите предприятие --</option>
+                                </select>
+                                <button type="button" class="search-btn" onclick="showReference('enterprises')">🔍</button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="districtSelect">Район *</label>
+                            <div class="select-with-search">
+                                <select id="districtSelect" name="district" required>
+                                    <option value="">-- Выберите район --</option>
+                                </select>
+                                <button type="button" class="search-btn" onclick="showReference('districts')">🔍</button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="yearSelect">Отчётный период *</label>
+                            <input type="number" id="yearSelect" name="year" required 
+                                   placeholder="Введите год (например: 2024)" min="2000" max="2100">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="serviceTypeSelect">Вид услуги *</label>
+                            <div class="select-with-search">
+                                <select id="serviceTypeSelect" name="serviceType" required>
+                                    <option value="">-- Выберите вид услуги --</option>
+                                </select>
+                                <button type="button" class="search-btn" onclick="showReference('service_types')">🔍</button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="indicatorCode">Код показателя</label>
+                            <input type="number" id="indicatorCode" name="indicatorCode" 
+                                   placeholder="Введите код показателя">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="planTotal">План всего</label>
+                            <input type="number" id="planTotal" name="planTotal" 
+                                   placeholder="Введите плановое значение" min="0" step="0.01">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="factTotal">Фактически выполнено</label>
+                            <input type="number" id="factTotal" name="factTotal" 
+                                   placeholder="Введите фактическое значение" min="0" step="0.01">
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Правая часть - Справочники -->
+                <div class="reference-section">
+                    <h4>📚 Справочники</h4>
+                    <div class="reference-tabs">
+                        <button class="tab-btn active" onclick="showReference('enterprises')">🏢 Предприятия</button>
+                        <button class="tab-btn" onclick="showReference('districts')">📍 Районы</button>
+                        <button class="tab-btn" onclick="showReference('service_types')">📋 Виды услуг</button>
+                    </div>
+                    
+                    <div class="reference-search">
+                        <input type="text" id="referenceSearch" placeholder="🔍 Поиск..." 
+                               onkeyup="searchReference()">
+                    </div>
+                    
+                    <div class="reference-table-container">
+                        <table class="reference-table">
+                            <thead>
+                                <tr>
+                                    <th width="100">Код</th>
+                                    <th>Наименование</th>
+                                </tr>
+                            </thead>
+                            <tbody id="referenceTableBody">
+                                <!-- Данные справочников -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">❌ Отмена</button>
+            <button type="button" class="btn btn-primary" onclick="saveService()">💾 Сохранить</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div id="confirmModal" class="modal">
+    <div class="modal-content confirm-modal">
+        <div class="modal-header">
+            <h3>⚠️ Подтверждение удаления</h3>
+        </div>
+        <div class="modal-body">
+            <p>Вы действительно хотите удалить выбранную услугу?</p>
+            <p id="confirmMessage" class="warning-text"></p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeConfirmModal()">❌ Нет, отменить</button>
+            <button type="button" class="btn btn-danger" onclick="confirmDelete()">✅ Да, удалить</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Стили для фильтров */
+    .filters-section {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+
+    .filter-row {
+        display: flex;
+        gap: 20px;
+        align-items: end;
+        flex-wrap: wrap;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .filter-group label {
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .filter-group select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        min-width: 200px;
+    }
+
+    /* Остальные стили аналогичны предыдущим разделам */
+    .table-container {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+        margin-top: 20px;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .data-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .data-table tbody tr:hover {
+        background: #f8f9fa;
+        cursor: pointer;
+    }
+
+    .data-table tbody tr.selected {
+        background: #e3f2fd;
+    }
+
+    /* Модальные окна */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+        background: white;
+        margin: 2% auto;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+
+    .large-modal {
+        width: 90%;
+        max-width: 1200px;
+        height: 85vh;
+    }
+
+    .confirm-modal {
+        width: 500px;
+    }
+
+    .modal-header {
+        padding: 20px;
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-body {
+        padding: 20px;
+        height: calc(100% - 120px);
+        overflow-y: auto;
+    }
+
+    .modal-footer {
+        padding: 15px 20px;
+        border-top: 1px solid #e0e0e0;
+        text-align: right;
+    }
+
+    .close {
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        color: #999;
+    }
+
+    .close:hover {
+        color: #333;
+    }
+
+    /* Layout модального окна */
+    .modal-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        height: 100%;
+    }
+
+    .form-section, .reference-section {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-section h4, .reference-section h4 {
+        margin-bottom: 20px;
+        color: #333;
+    }
+
+    /* Форма */
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .form-group input, .form-group select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+    }
+
+    .form-group input:focus, .form-group select:focus {
+        outline: none;
+        border-color: #007bff;
+    }
+
+    .select-with-search {
+        display: flex;
+        gap: 5px;
+    }
+
+    .select-with-search select {
+        flex: 1;
+    }
+
+    .search-btn {
+        padding: 10px 15px;
+        background: #f8f9fa;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .search-btn:hover {
+        background: #e9ecef;
+    }
+
+    /* Справочники */
+    .reference-tabs {
+        display: flex;
+        margin-bottom: 15px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .tab-btn {
+        padding: 10px 15px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+    }
+
+    .tab-btn.active {
+        border-bottom-color: #007bff;
+        color: #007bff;
+    }
+
+    .reference-search {
+        margin-bottom: 15px;
+    }
+
+    .reference-search input {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+
+    .reference-table-container {
+        flex: 1;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+
+    .reference-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .reference-table th,
+    .reference-table td {
+        padding: 8px 12px;
+        border-bottom: 1px solid #e0e0e0;
+        text-align: left;
+    }
+
+    .reference-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+    }
+
+    .reference-table tbody tr:hover {
+        background: #f8f9fa;
+        cursor: pointer;
+    }
+
+    /* Кнопки */
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-left: 10px;
+    }
+
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-primary {
+        background: #007bff;
+        color: white;
+    }
+
+    .btn-warning {
+        background: #ffc107;
+        color: #333;
+    }
+
+    .btn-danger {
+        background: #dc3545;
+        color: white;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .warning-text {
+        color: #dc3545;
+        font-weight: 600;
+        margin-top: 10px;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+</style>
+
+<script>
+    // Глобальные переменные
+    let services = [];
+    let selectedService = null;
+    let currentReference = 'enterprises';
+    let references = {
+        enterprises: [],
+        districts: [],
+        service_types: []
+    };
+
+    // Инициализация при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        loadServices();
+        loadFilters();
+        loadReferences();
+    });
+
+    // Функция загрузки услуг
+    async function loadServices() {
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const tableBody = document.getElementById('servicesTableBody');
+        
+        try {
+            loadingIndicator.style.display = 'block';
+            tableBody.innerHTML = '';
+            
+            const response = await fetch('/api/admin/services');
+            const data = await response.json();
+            
+            if (data.success) {
+                services = data.services;
+                renderServicesTable();
+                updateFilters();
+            } else {
+                tableBody.innerHTML = `<tr><td colspan="8" class="error">Ошибка загрузки: ${data.error}</td></tr>`;
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки услуг:', error);
+            tableBody.innerHTML = `<tr><td colspan="8" class="error">Ошибка загрузки: ${error.message}</td></tr>`;
+        } finally {
+            loadingIndicator.style.display = 'none';
+        }
+    }
+
+    // Функция загрузки фильтров
+    async function loadFilters() {
+        try {
+            // Загружаем данные для фильтров
+            const [enterprisesRes, districtsRes] = await Promise.all([
+                fetch('/api/admin/reference/enterprises'),
+                fetch('/api/admin/reference/districts')
+            ]);
+            
+            const enterprisesData = await enterprisesRes.json();
+            const districtsData = await districtsRes.json();
+            
+            if (enterprisesData.success) {
+                const enterpriseFilter = document.getElementById('enterpriseFilter');
+                enterprisesData.data.forEach(enterprise => {
+                    const option = document.createElement('option');
+                    option.value = enterprise.reg_number;
+                    option.textContent = `${enterprise.name} (${enterprise.reg_number})`;
+                    enterpriseFilter.appendChild(option);
+                });
+            }
+            
+            if (districtsData.success) {
+                const districtFilter = document.getElementById('districtFilter');
+                districtsData.data.forEach(district => {
+                    const option = document.createElement('option');
+                    option.value = district.code;
+                    option.textContent = `${district.name} (${district.region_name})`;
+                    districtFilter.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки фильтров:', error);
+        }
+    }
+
+    // Функция обновления опций фильтров
+    function updateFilters() {
+        updateYearFilterOptions();
+    }
+
+    // Функция обновления опций фильтра годов
+    function updateYearFilterOptions() {
+        const yearFilter = document.getElementById('yearFilter');
+        const currentValue = yearFilter.value;
+        
+        yearFilter.innerHTML = '<option value="">Все периоды</option>';
+        
+        // Получаем уникальные годы из услуг
+        const uniqueYears = [...new Set(services.map(s => s.year))].sort((a, b) => b - a);
+        
+        uniqueYears.forEach(year => {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearFilter.appendChild(option);
+        });
+        
+        if (currentValue) {
+            yearFilter.value = currentValue;
+        }
+    }
+
+    // Функция отрисовки таблицы услуг
+    function renderServicesTable(filteredServices = null) {
+        const tableBody = document.getElementById('servicesTableBody');
+        const dataToRender = filteredServices || services;
+        
+        if (dataToRender.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">Нет услуг для отображения</td></tr>';
+            return;
+        }
+        
+        tableBody.innerHTML = dataToRender.map(service => {
+            const isSelected = selectedService && selectedService.id === service.id;
+            
+            return `
+                <tr onclick="selectService(${service.id})" 
+                    class="${isSelected ? 'selected' : ''}">
+                    <td>
+                        <input type="checkbox" 
+                               onchange="toggleServiceSelection(${service.id})" 
+                               ${isSelected ? 'checked' : ''}>
+                    </td>
+                    <td>${escapeHtml(service.enterprise_name)}</td>
+                    <td>${escapeHtml(service.service_type)}</td>
+                    <td>${escapeHtml(service.district_name)}</td>
+                    <td>${service.year}</td>
+                    <td>${service.indicator_code || '—'}</td>
+                    <td>${service.plan_total || '—'}</td>
+                    <td>${service.fact_total || '—'}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // Функция выбора услуги
+    function selectService(serviceId) {
+        selectedService = services.find(s => s.id === serviceId);
+        
+        // Снимаем выделение со всех строк
+        document.querySelectorAll('#servicesTableBody tr').forEach(tr => {
+            tr.classList.remove('selected');
+        });
+        
+        // Выделяем текущую строку
+        event.currentTarget.classList.add('selected');
+        
+        updateActionButtons();
+    }
+
+    // Функция для чекбокса
+    function toggleServiceSelection(serviceId) {
+        if (selectedService && selectedService.id === serviceId) {
+            selectedService = null;
+        } else {
+            selectedService = services.find(s => s.id === serviceId);
+        }
+        
+        renderServicesTable();
+        updateActionButtons();
+        event.stopPropagation();
+    }
+
+    // Функция обновления состояния кнопок действий
+    function updateActionButtons() {
+        const editBtn = document.getElementById('editBtn');
+        const deleteBtn = document.getElementById('deleteBtn');
+        
+        if (selectedService) {
+            editBtn.disabled = false;
+            deleteBtn.disabled = false;
+        } else {
+            editBtn.disabled = true;
+            deleteBtn.disabled = true;
+        }
+    }
+
+    // Функция фильтрации услуг
+    function filterServices() {
+        const enterpriseFilter = document.getElementById('enterpriseFilter').value;
+        const yearFilter = document.getElementById('yearFilter').value;
+        const districtFilter = document.getElementById('districtFilter').value;
+        
+        let filteredServices = services;
+        
+        if (enterpriseFilter) {
+            filteredServices = filteredServices.filter(service => 
+                service.reg_number.toString() === enterpriseFilter
+            );
+        }
+        
+        if (yearFilter) {
+            filteredServices = filteredServices.filter(service => 
+                service.year.toString() === yearFilter
+            );
+        }
+        
+        if (districtFilter) {
+            filteredServices = filteredServices.filter(service => 
+                service.district_code.toString() === districtFilter
+            );
+        }
+        
+        renderServicesTable(filteredServices);
+    }
+
+    // Функция сброса фильтров
+    function clearFilters() {
+        document.getElementById('enterpriseFilter').value = '';
+        document.getElementById('yearFilter').value = '';
+        document.getElementById('districtFilter').value = '';
+        renderServicesTable();
+    }
+
+    // Функция загрузки справочников
+    async function loadReferences() {
+        try {
+            // Загружаем все справочники параллельно
+            const [enterprisesRes, districtsRes, serviceTypesRes] = await Promise.all([
+                fetch('/api/admin/reference/enterprises'),
+                fetch('/api/admin/reference/districts'),
+                fetch('/api/admin/reference/service-types')
+            ]);
+            
+            const enterprisesData = await enterprisesRes.json();
+            const districtsData = await districtsRes.json();
+            const serviceTypesData = await serviceTypesRes.json();
+            
+            if (enterprisesData.success) references.enterprises = enterprisesData.data;
+            if (districtsData.success) references.districts = districtsData.data;
+            if (serviceTypesData.success) references.service_types = serviceTypesData.data;
+            
+            // Заполняем выпадающие списки
+            fillSelectOptions('enterpriseSelect', references.enterprises, 'reg_number', 'name');
+            fillSelectOptions('districtSelect', references.districts, 'code', 'name');
+            fillSelectOptions('serviceTypeSelect', references.service_types, 'name', 'name');
+            
+            // Показываем первый справочник по умолчанию
+            showReference('enterprises');
+            
+        } catch (error) {
+            console.error('Ошибка загрузки справочников:', error);
+        }
+    }
+
+    // Функция заполнения выпадающих списков
+    function fillSelectOptions(selectId, data, valueField, textField) {
+        const select = document.getElementById(selectId);
+        const currentValue = select.value;
+        
+        select.innerHTML = `<option value="">-- Выберите --</option>`;
+        data.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item[valueField];
+            option.textContent = item[textField];
+            select.appendChild(option);
+        });
+        
+        if (currentValue) {
+            select.value = currentValue;
+        }
+    }
+
+    // Функция показа справочника
+    function showReference(type) {
+        currentReference = type;
+        
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        const tableBody = document.getElementById('referenceTableBody');
+        const data = references[type];
+        
+        let tableHTML = '';
+        
+        if (type === 'enterprises') {
+            tableHTML = data.map(item => `
+                <tr onclick="selectReferenceItem('${type}', '${item.reg_number}', '${escapeHtml(item.name)}')">
+                    <td>${item.reg_number}</td>
+                    <td>${escapeHtml(item.name)}</td>
+                </tr>
+            `).join('');
+        } else if (type === 'districts') {
+            tableHTML = data.map(item => `
+                <tr onclick="selectReferenceItem('${type}', '${item.code}', '${escapeHtml(item.name)}')">
+                    <td>${item.code}</td>
+                    <td>${escapeHtml(item.name)} (${item.region_name})</td>
+                </tr>
+            `).join('');
+        } else if (type === 'service_types') {
+            tableHTML = data.map(item => `
+                <tr onclick="selectReferenceItem('${type}', '${escapeHtml(item.name)}', '${escapeHtml(item.name)}')">
+                    <td>—</td>
+                    <td>${escapeHtml(item.name)}</td>
+                </tr>
+            `).join('');
+        }
+        
+        tableBody.innerHTML = tableHTML;
+        document.getElementById('referenceSearch').value = '';
+    }
+
+    // Функция выбора элемента из справочника
+    function selectReferenceItem(type, value, name) {
+        let selectId;
+        
+        switch (type) {
+            case 'enterprises':
+                selectId = 'enterpriseSelect';
+                break;
+            case 'districts':
+                selectId = 'districtSelect';
+                break;
+            case 'service_types':
+                selectId = 'serviceTypeSelect';
+                break;
+        }
+        
+        if (selectId) {
+            document.getElementById(selectId).value = value;
+        }
+        
+        // Подсвечиваем выбранную строку
+        document.querySelectorAll('#referenceTableBody tr').forEach(tr => {
+            tr.classList.remove('selected');
+        });
+        event.target.closest('tr').classList.add('selected');
+    }
+
+    // Функция поиска в справочнике
+    function searchReference() {
+        const searchTerm = document.getElementById('referenceSearch').value.toLowerCase();
+        const data = references[currentReference];
+        
+        let filteredData;
+        
+        if (currentReference === 'enterprises') {
+            filteredData = data.filter(item => 
+                item.name.toLowerCase().includes(searchTerm) || 
+                item.reg_number.toString().includes(searchTerm)
+            );
+        } else if (currentReference === 'districts') {
+            filteredData = data.filter(item => 
+                item.name.toLowerCase().includes(searchTerm) || 
+                item.region_name.toLowerCase().includes(searchTerm) ||
+                item.code.toString().includes(searchTerm)
+            );
+        } else if (currentReference === 'service_types') {
+            filteredData = data.filter(item => 
+                item.name.toLowerCase().includes(searchTerm)
+            );
+        }
+        
+        const tableBody = document.getElementById('referenceTableBody');
+        
+        let tableHTML = '';
+        
+        if (currentReference === 'enterprises') {
+            tableHTML = filteredData.map(item => `
+                <tr onclick="selectReferenceItem('${currentReference}', '${item.reg_number}', '${escapeHtml(item.name)}')">
+                    <td>${item.reg_number}</td>
+                    <td>${escapeHtml(item.name)}</td>
+                </tr>
+            `).join('');
+        } else if (currentReference === 'districts') {
+            tableHTML = filteredData.map(item => `
+                <tr onclick="selectReferenceItem('${currentReference}', '${item.code}', '${escapeHtml(item.name)}')">
+                    <td>${item.code}</td>
+                    <td>${escapeHtml(item.name)} (${item.region_name})</td>
+                </tr>
+            `).join('');
+        } else if (currentReference === 'service_types') {
+            tableHTML = filteredData.map(item => `
+                <tr onclick="selectReferenceItem('${currentReference}', '${escapeHtml(item.name)}', '${escapeHtml(item.name)}')">
+                    <td>—</td>
+                    <td>${escapeHtml(item.name)}</td>
+                </tr>
+            `).join('');
+        }
+        
+        tableBody.innerHTML = tableHTML;
+    }
+
+    // Функция открытия модального окна добавления
+    function openAddModal() {
+        document.getElementById('modalTitle').textContent = '✏️ Добавление услуги';
+        document.getElementById('serviceForm').reset();
+        selectedService = null;
+        document.getElementById('serviceModal').style.display = 'block';
+    }
+
+    // Функция открытия модального окна редактирования
+    function openEditModal() {
+        if (!selectedService) return;
+        
+        document.getElementById('modalTitle').textContent = '✏️ Редактирование услуги';
+        document.getElementById('enterpriseSelect').value = selectedService.reg_number;
+        document.getElementById('enterpriseSelect').disabled = true;
+        document.getElementById('districtSelect').value = selectedService.district_code;
+        document.getElementById('districtSelect').disabled = true;
+        document.getElementById('yearSelect').value = selectedService.year;
+        document.getElementById('yearSelect').readOnly = true;
+        document.getElementById('serviceTypeSelect').value = selectedService.service_type;
+        document.getElementById('serviceTypeSelect').disabled = true;
+        document.getElementById('indicatorCode').value = selectedService.indicator_code || '';
+        document.getElementById('planTotal').value = selectedService.plan_total || '';
+        document.getElementById('factTotal').value = selectedService.fact_total || '';
+        
+        document.getElementById('serviceModal').style.display = 'block';
+    }
+
+    // Функция закрытия модального окна
+    function closeModal() {
+        document.getElementById('serviceModal').style.display = 'none';
+        document.getElementById('enterpriseSelect').disabled = false;
+        document.getElementById('districtSelect').disabled = false;
+        document.getElementById('yearSelect').readOnly = false;
+        document.getElementById('serviceTypeSelect').disabled = false;
+    }
+
+    // Функция сохранения услуги
+    async function saveService() {
+        const formData = {
+            reg_number: document.getElementById('enterpriseSelect').value,
+            district_code: parseInt(document.getElementById('districtSelect').value),
+            year: parseInt(document.getElementById('yearSelect').value),
+            service_type: document.getElementById('serviceTypeSelect').value,
+            indicator_code: document.getElementById('indicatorCode').value || null,
+            plan_total: document.getElementById('planTotal').value ? parseFloat(document.getElementById('planTotal').value) : null,
+            fact_total: document.getElementById('factTotal').value ? parseFloat(document.getElementById('factTotal').value) : null
+        };
+        
+        // Валидация
+        if (!formData.reg_number || !formData.district_code || !formData.year || !formData.service_type) {
+            alert('Пожалуйста, заполните обязательные поля (Предприятие, Район, Отчётный период, Вид услуги)');
+            return;
+        }
+        
+        try {
+            const url = selectedService ? 
+                `/api/admin/services/${selectedService.id}` : 
+                '/api/admin/services';
+                
+            const method = selectedService ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                closeModal();
+                loadServices();
+                showNotification('Услуга успешно сохранена', 'success');
+            } else {
+                alert(`Ошибка сохранения: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Ошибка сохранения услуги:', error);
+            alert('Ошибка сохранения услуги');
+        }
+    }
+
+    // Функция удаления услуги
+    function deleteService() {
+        if (!selectedService) return;
+        
+        document.getElementById('confirmMessage').textContent = 
+            `Услуга: "${selectedService.service_type}" (Предприятие: ${selectedService.enterprise_name}, Год: ${selectedService.year})`;
+        document.getElementById('confirmModal').style.display = 'block';
+    }
+
+    // Функция подтверждения удаления
+    async function confirmDelete() {
+        if (!selectedService) return;
+        
+        try {
+            const response = await fetch(`/api/admin/services/${selectedService.id}`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                closeConfirmModal();
+                selectedService = null;
+                loadServices();
+                showNotification('Услуга успешно удалена', 'success');
+            } else {
+                alert(`Ошибка удаления: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Ошибка удаления услуги:', error);
+            alert('Ошибка удаления услуги');
+        }
+    }
+
+    // Функция закрытия модального окна подтверждения
+    function closeConfirmModal() {
+        document.getElementById('confirmModal').style.display = 'none';
+    }
+
+    // Вспомогательные функции
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function showNotification(message, type) {
+        alert(message);
+    }
+
+    // Глобальная функция для обновления данных
+    window.refreshPageData = function() {
+        loadServices();
+    };
+</script>
+{% endblock %}

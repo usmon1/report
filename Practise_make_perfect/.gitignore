@@ -1,0 +1,53 @@
+# .gitignore for Practise_make_perfect
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# IDEs and editors
+.idea/
+.vscode/
+
+# Environment variables
+.env
+
+# macOS
+.DS_Store
+
+# Type checkers / caches
+.mypy_cache/
+.ropeproject/
+
+# Database files
+*.db
+
+# Temporary files
+*.log
+
+# Local project settings
+instance/
+
+# Ignore compiled C extensions
+*.so
